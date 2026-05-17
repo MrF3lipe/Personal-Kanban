@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kanban</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Kanban</h1>
+    <div class="header-right">
+      <span class="user-badge" id="userBadge"></span>
+      <button id="addTaskBtn" class="btn-primary">+ Nueva tarea</button>
+      <button id="logoutBtn" class="btn-logout" title="Cambiar usuario">↻</button>
+    </div>
+  </header>
+
+  <main id="board"></main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+      <h2 id="modalTitle">Nueva tarea</h2>
+      <form id="taskForm">
+        <label for="taskTitle">Título</label>
+        <input type="text" id="taskTitle" required />
+        <label for="taskDescription">Descripción</label>
+        <textarea id="taskDescription" rows="3"></textarea>
+        <label for="taskStatus">Estado</label>
+        <select id="taskStatus">
+          <option value="pending">Pendientes</option>
+          <option value="in-progress">En Proceso</option>
+          <option value="in-review">En Revisión</option>
+          <option value="completed">Completadas</option>
+        </select>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Guardar</button>
+          <button type="button" id="deleteTaskBtn" class="btn-danger hidden">Eliminar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div id="loginScreen" class="modal hidden">
+    <div class="modal-content login-modal">
+      <h2>Bienvenido al Kanban</h2>
+      <p style="color: #666; margin-bottom: 16px;">Ingresa tu nombre para comenzar</p>
+      <form id="loginForm">
+        <input type="text" id="loginInput" placeholder="Tu nombre..." required />
+        <button type="submit" class="btn-primary" style="width:100%;margin-top:12px">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
