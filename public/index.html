@@ -2,59 +2,177 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>Kanban</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Kanban</h1>
-    <div class="header-right">
-      <span class="user-badge" id="userBadge"></span>
-      <button id="addTaskBtn" class="btn-primary">+ Nueva tarea</button>
-      <button id="logoutBtn" class="btn-logout" title="Cambiar usuario">↻</button>
-    </div>
-  </header>
-
-  <main id="board"></main>
-
-  <!-- Modal -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <span id="closeModal" class="close">&times;</span>
-      <h2 id="modalTitle">Nueva tarea</h2>
-      <form id="taskForm">
-        <label for="taskTitle">Título</label>
-        <input type="text" id="taskTitle" required />
-        <label for="taskDescription">Descripción</label>
-        <textarea id="taskDescription" rows="3"></textarea>
-        <label for="taskStatus">Estado</label>
-        <select id="taskStatus">
-          <option value="pending">Pendientes</option>
-          <option value="in-progress">En Proceso</option>
-          <option value="in-review">En Revisión</option>
-          <option value="completed">Completadas</option>
-        </select>
-        <div class="modal-actions">
-          <button type="submit" class="btn-primary">Guardar</button>
-          <button type="button" id="deleteTaskBtn" class="btn-danger hidden">Eliminar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Login -->
-  <div id="loginScreen" class="modal hidden">
-    <div class="modal-content login-modal">
-      <h2>Bienvenido al Kanban</h2>
-      <p style="color: #666; margin-bottom: 16px;">Ingresa tu nombre para comenzar</p>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="overlay hidden">
+    <div class="login-card">
+      <div class="login-icon">⊞</div>
+      <h1>Kanban</h1>
+      <p class="login-sub">Tablero colaborativo en tiempo real</p>
       <form id="loginForm">
-        <input type="text" id="loginInput" placeholder="Tu nombre..." required />
-        <button type="submit" class="btn-primary" style="width:100%;margin-top:12px">Entrar</button>
+        <input type="text" id="loginInput" placeholder="Tu nombre..." maxlength="30" autofocus />
+        <button type="submit">Entrar al tablero</button>
       </form>
     </div>
   </div>
 
+  <!-- App Shell -->
+  <div id="app" class="hidden">
+    <!-- Top Bar -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <button id="backBtn" class="topbar-btn hidden" title="Volver a proyectos">←</button>
+        <h1 id="topbarTitle">Kanban</h1>
+      </div>
+      <div class="topbar-center">
+        <div id="searchWrap" class="search-wrap hidden">
+          <input type="text" id="searchInput" placeholder="Buscar tareas…" />
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div id="usersOnline" class="users-online"></div>
+        <button id="toggleThemeBtn" class="topbar-btn" title="Cambiar tema">◐</button>
+        <button id="toggleSearchBtn" class="topbar-btn hidden" title="Buscar">⌕</button>
+        <span class="user-badge" id="userBadge"></span>
+        <button id="logoutBtn" class="topbar-btn" title="Cambiar usuario">⏻</button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main"></main>
+  </div>
+
+  <!-- Templates -->
+
+  <!-- Projects List -->
+  <template id="projectsView">
+    <div class="projects-header">
+      <h2>Proyectos</h2>
+      <button id="newProjectBtn" class="btn-primary">+ Nuevo proyecto</button>
+    </div>
+    <div id="projectsList" class="projects-grid"></div>
+  </template>
+
+  <template id="projectCard">
+    <div class="project-card" data-id="">
+      <div class="project-card-header">
+        <h3 class="project-name"></h3>
+        <button class="project-delete" title="Eliminar proyecto">✕</button>
+      </div>
+      <p class="project-desc"></p>
+      <div class="project-meta">
+        <span class="project-tasks-count"></span>
+        <span class="project-id-label">ID: <code></code></span>
+      </div>
+    </div>
+  </template>
+
+  <!-- Kanban View -->
+  <template id="kanbanView">
+    <div class="kanban-toolbar">
+      <div class="toolbar-left">
+        <button id="addTaskBtn" class="btn-primary">+ Tarea</button>
+        <button id="editColumnsBtn" class="btn-ghost">Columnas</button>
+        <button id="viewListBtn" class="btn-ghost" title="Vista lista">☰</button>
+        <button id="exportBtn" class="btn-ghost" title="Exportar JSON">↓</button>
+      </div>
+      <div class="toolbar-right">
+        <div class="filter-group">
+          <select id="filterPriority"><option value="">Prioridad</option><option value="p0">P0</option><option value="p1">P1</option><option value="p2">P2</option><option value="p3">P3</option></select>
+          <select id="filterAssignee"><option value="">Asignado</option></select>
+          <select id="filterTag"><option value="">Etiqueta</option></select>
+        </div>
+        <div class="wip-indicator" id="wipIndicator"></div>
+      </div>
+    </div>
+    <div id="boardWrap" class="board-wrap">
+      <div id="board" class="board"></div>
+    </div>
+    <div id="listView" class="list-view hidden"></div>
+    <div id="activityPanel" class="activity-panel hidden">
+      <div class="activity-header"><h3>Actividad</h3><button id="closeActivity" class="btn-ghost">✕</button></div>
+      <div id="activityList" class="activity-list"></div>
+    </div>
+  </template>
+
+  <!-- Task Modal -->
+  <template id="taskModal">
+    <div class="overlay modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-topbar">
+          <div class="modal-priority-group">
+            <select id="modalPriority">
+              <option value="p0">P0</option><option value="p1">P1</option><option value="p2">P2</option><option value="p3">P3</option>
+            </select>
+          </div>
+          <div class="modal-status-group">
+            <select id="modalStatus"></select>
+          </div>
+          <button id="modalClose" class="topbar-btn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-main">
+            <input type="text" id="modalTitle" placeholder="Título de la tarea" class="modal-title-input" />
+            <textarea id="modalDesc" placeholder="Descripción…" rows="4"></textarea>
+            <div class="modal-section">
+              <h4>Checklist</h4>
+              <div id="modalChecklist"></div>
+              <form id="checklistForm" class="inline-form">
+                <input type="text" id="checklistInput" placeholder="Nuevo item…" />
+                <button type="submit" class="btn-sm">+</button>
+              </form>
+            </div>
+            <div class="modal-section">
+              <h4>Comentarios</h4>
+              <div id="modalComments"></div>
+              <form id="commentForm" class="inline-form">
+                <input type="text" id="commentInput" placeholder="Escribe un comentario…" />
+                <button type="submit" class="btn-sm">Enviar</button>
+              </form>
+            </div>
+          </div>
+          <div class="modal-side">
+            <label>Asignado</label>
+            <select id="modalAssignee"><option value="">Sin asignar</option></select>
+            <label>Fecha límite</label>
+            <input type="date" id="modalDeadline" />
+            <label>Etiquetas</label>
+            <div id="modalTags" class="tags-edit"></div>
+            <div class="inline-form">
+              <input type="text" id="tagInput" placeholder="Nueva etiqueta…" />
+              <button id="addTagBtn" class="btn-sm">+</button>
+            </div>
+            <hr />
+            <div class="modal-meta">
+              <small id="modalCreatedBy"></small>
+              <small id="modalModifiedBy"></small>
+            </div>
+            <button id="deleteTaskBtn" class="btn-danger btn-full">Eliminar tarea</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Columns Editor Modal -->
+  <template id="columnsModal">
+    <div class="overlay hidden" id="columnsOverlay">
+      <div class="modal-card modal-sm">
+        <div class="modal-topbar"><h3>Editar columnas</h3><button id="closeColumns" class="topbar-btn">✕</button></div>
+        <div id="columnsList" class="columns-list"></div>
+        <div class="inline-form"><input type="text" id="newColumnInput" placeholder="Nueva columna…" /><button id="addColumnBtn" class="btn-sm">+</button></div>
+        <button id="saveColumnsBtn" class="btn-primary btn-full" style="margin-top:12px">Guardar</button>
+      </div>
+    </div>
+  </template>
+
+  <script src="config.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
 </body>
