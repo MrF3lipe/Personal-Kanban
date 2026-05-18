@@ -34,6 +34,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("loginScreen").classList.add("hidden");
     document.getElementById("userBadge").textContent = currentUser;
     loadProjects();
+  } else {
+    showLogin();
   }
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -49,6 +51,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // --- Login ---
+function showLogin() {
+  document.getElementById("loginScreen").classList.remove("hidden");
+  document.getElementById("loginInput").focus();
+}
+
 function initLogin() {
   document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -106,13 +113,44 @@ function showProjectsView() {
   loadProjects();
 }
 
+function getJoined() {
+  try { return JSON.parse(localStorage.getItem("kanban_joined") || "{}"); } catch { return {}; }
+}
+function saveJoined(joined) { localStorage.setItem("kanban_joined", JSON.stringify(joined)); }
+
+function showConfirm(title, message, btnText) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById("confirmOverlay");
+    if (!overlay) {
+      const tpl = document.getElementById("confirmDialog");
+      document.body.appendChild(tpl.content.cloneNode(true));
+      overlay = document.getElementById("confirmOverlay");
+      document.getElementById("confirmCancel").addEventListener("click", () => { overlay.classList.add("hidden"); resolve(false); });
+      document.getElementById("confirmOk").addEventListener("click", () => { overlay.classList.add("hidden"); resolve(true); });
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.classList.add("hidden"); resolve(false); } });
+    }
+    document.getElementById("confirmTitle").textContent = title;
+    document.getElementById("confirmMessage").textContent = message;
+    document.getElementById("confirmOk").textContent = btnText || "Eliminar";
+    overlay.classList.remove("hidden");
+  });
+}
+
 function renderProjects() {
   const tpl = document.getElementById("projectsView");
   const main = document.getElementById("main");
   main.innerHTML = tpl.innerHTML;
 
+  const joined = getJoined();
+  const joinedIds = new Set(Object.keys(joined));
+
   const list = document.getElementById("projectsList");
   list.innerHTML = "";
+
+  const joinedSection = document.getElementById("joinedProjects");
+  const joinedList = document.createElement("div");
+  joinedList.className = "projects-grid";
+  let hasJoined = false;
 
   projects.forEach((p) => {
     const card = document.getElementById("projectCard").content.cloneNode(true);
@@ -121,33 +159,135 @@ function renderProjects() {
     div.querySelector(".project-name").textContent = p.name;
     div.querySelector(".project-desc").textContent = p.description || "Sin descripción";
     div.querySelector(".project-id-label code").textContent = p.id;
-    const taskCount = tasks.length || 0;
-    div.querySelector(".project-tasks-count").textContent = `${taskCount} tareas`;
+    div.querySelector(".project-tasks-count").textContent = `0 tareas`;
 
-    div.querySelector(".project-card").addEventListener("click", (e) => {
-      if (e.target.closest(".project-delete")) return;
-      navigate(`/project/${p.id}`);
-    });
+    if (joinedIds.has(p.id) || p.createdBy === currentUser) {
+      hasJoined = true;
+      div.classList.add("joined");
+      const badge = document.createElement("span");
+      badge.className = "joined-badge";
+      badge.textContent = "✓";
+      div.querySelector(".project-card-header").appendChild(badge);
+      if (!joinedIds.has(p.id)) { joined[p.id] = ""; saveJoined(joined); }
+      div.addEventListener("click", (e) => {
+        if (e.target.closest(".project-delete")) return;
+        navigate(`/project/${p.id}`);
+      });
+      joinedList.appendChild(div);
+    } else {
+      div.addEventListener("click", async (e) => {
+        if (e.target.closest(".project-delete")) return;
+        const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
+        if (pw === null) return;
+        const verify = await fetch(`${BACKEND_URL}/api/projects/${p.id}/verify`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: pw }),
+        });
+        if (verify.ok) {
+          joined[p.id] = pw;
+          saveJoined(joined);
+          navigate(`/project/${p.id}`);
+        } else {
+          alert("Clave incorrecta");
+        }
+      });
+      list.appendChild(div);
+    }
 
     div.querySelector(".project-delete").addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (!confirm(`¿Eliminar el proyecto "${p.name}"?`)) return;
-      await fetch(`${BACKEND_URL}/api/projects/${p.id}`, { method: "DELETE" });
-      loadProjects();
+      e.stopImmediatePropagation();
+      const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
+      if (!ok) return;
+      try {
+        await fetch(`${BACKEND_URL}/api/projects/${p.id}`, { method: "DELETE" });
+        delete joined[p.id];
+        saveJoined(joined);
+        loadProjects();
+      } catch (err) {
+        alert("Error al eliminar: " + err.message);
+      }
     });
-
-    list.appendChild(card);
   });
+
+  if (hasJoined) {
+    joinedSection.innerHTML = "<h3>Mis proyectos</h3>";
+    joinedSection.appendChild(joinedList);
+  } else {
+    joinedSection.innerHTML = "";
+  }
 
   document.getElementById("newProjectBtn").addEventListener("click", () => {
     const name = prompt("Nombre del proyecto:");
-    if (name && name.trim()) {
-      fetch(`${BACKEND_URL}/api/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), createdBy: currentUser }),
-      }).then(() => loadProjects());
+    if (!name || !name.trim()) return;
+    const password = prompt("Clave del proyecto (dejar vacío para público):") || "";
+    fetch(`${BACKEND_URL}/api/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), password, createdBy: currentUser }),
+    }).then(async (r) => {
+      if (r.ok) {
+        const proj = await r.json();
+        joined[proj.id] = password;
+        saveJoined(joined);
+        loadProjects();
+      }
+    });
+  });
+
+  document.getElementById("joinForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("joinId").value.trim();
+    const password = document.getElementById("joinPassword").value;
+    const errEl = document.getElementById("joinError");
+    const verify = await fetch(`${BACKEND_URL}/api/projects/${id}/verify`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    if (verify.ok) {
+      joined[id] = password;
+      saveJoined(joined);
+      errEl.classList.add("hidden");
+      navigate(`/project/${id}`);
+    } else {
+      errEl.textContent = "ID o clave incorrectos";
+      errEl.classList.remove("hidden");
     }
+  });
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      try {
+        const data = JSON.parse(await file.text());
+        const projectsData = Array.isArray(data) ? data : [data];
+        for (const p of projectsData) {
+          await fetch(`${BACKEND_URL}/api/projects`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: p.name || p.project?.name || "Importado",
+              description: p.description || p.project?.description || "",
+              password: p.password || "",
+              columns: p.columns || p.project?.columns,
+              columnLabels: p.columnLabels || p.project?.columnLabels,
+              wipLimits: p.wipLimits || p.project?.wipLimits,
+              id: p.id,
+              createdBy: currentUser,
+            }),
+          });
+        }
+        alert(`${projectsData.length} proyecto(s) importado(s)`);
+        loadProjects();
+      } catch (err) {
+        alert("Error al importar: " + err.message);
+      }
+    };
+    input.click();
   });
 }
 
@@ -161,6 +301,12 @@ async function openProject(pid) {
   if (!res.ok) { navigate("/"); return; }
   const project = await res.json();
   document.getElementById("topbarTitle").textContent = project.name;
+
+  const joined = getJoined();
+  if (!(pid in joined)) {
+    navigate("/");
+    return;
+  }
 
   // Load tasks
   const tRes = await fetch(`${BACKEND_URL}/api/projects/${pid}/tasks`);
@@ -322,8 +468,9 @@ function renderBoard() {
     colEl.className = `column ${colId}`;
     colEl.dataset.column = colId;
 
+    const color = project.columnColors?.[colId];
     colEl.innerHTML = `
-      <div class="col-header">
+      <div class="col-header"${color ? ` style="background:${color}"` : ""}>
         <div class="col-header-left">
           <button class="col-collapse" title="Colapsar">◀</button>
           <span class="col-header-text">${labels[colId] || colId}</span>
@@ -462,7 +609,7 @@ function renderListView() {
   if (!container || viewMode !== "list") return;
   const project = projects.find((p) => p.id === currentProjectId);
   const labels = project?.columnLabels || {};
-  container.innerHTML = `<table class="list-table">
+  container.innerHTML = `<div class="list-table-wrap"><table class="list-table">
     <thead><tr>
       <th>Título</th><th>Estado</th><th>Prioridad</th><th>Asignado</th><th>Etiquetas</th><th>Fecha</th>
     </tr></thead>
@@ -478,7 +625,7 @@ function renderListView() {
         </tr>
       `).join("")}
     </tbody>
-  </table>`;
+  </table></div>`;
   container.querySelectorAll("tr[data-id]").forEach((row) => {
     row.addEventListener("click", () => {
       const task = tasks.find((t) => t.id === row.dataset.id);
@@ -545,9 +692,10 @@ async function openTaskModal(task) {
 }
 
 function createTaskModal() {
+  if (document.getElementById("modal-overlay")) return document.getElementById("modal-overlay");
   const tpl = document.getElementById("taskModal");
   document.body.appendChild(tpl.content.cloneNode(true));
-  const overlay = document.getElementById("modal-overlay") || document.querySelector(".modal-overlay");
+  const overlay = document.getElementById("modal-overlay");
 
   document.getElementById("modalClose").addEventListener("click", () => closeTaskModal());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeTaskModal(); });
@@ -557,10 +705,15 @@ function createTaskModal() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveTask(); }
   });
 
-  document.getElementById("deleteTaskBtn").addEventListener("click", () => {
-    if (editingTaskId && confirm("¿Eliminar esta tarea?")) {
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, { method: "DELETE" });
+  document.getElementById("deleteTaskBtn").addEventListener("click", async () => {
+    if (!editingTaskId) return;
+    const ok = await showConfirm("Eliminar tarea", "¿Eliminar esta tarea para siempre?", "Eliminar");
+    if (!ok) return;
+    try {
+      await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, { method: "DELETE" });
       closeTaskModal();
+    } catch (err) {
+      alert("Error al eliminar: " + err.message);
     }
   });
 
@@ -679,9 +832,9 @@ let autoSaveTimer = null;
 function autoSaveTask() {
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
-    if (!editingTaskId) return;
     const title = document.getElementById("modalTitle").value.trim();
     if (!title) return;
+    if (!editingTaskId) { saveTask(); return; }
     const body = {
       title,
       description: document.getElementById("modalDesc").value.trim(),
@@ -830,14 +983,16 @@ function openColumnsModal(project) {
   const overlay = document.getElementById("columnsOverlay");
   overlay.classList.remove("hidden");
 
-  const list = document.getElementById("columnsList");
+    const list = document.getElementById("columnsList");
   const cols = project.columns || ["pending","in-progress","in-review","completed"];
   const labels = project.columnLabels || {};
+  const colors = project.columnColors || {};
+  const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
 
   function renderCols() {
     list.innerHTML = cols.map((c, i) =>
       `<div class="col-edit-item">
-        <span style="color:var(--text3);font-size:0.8rem">${i + 1}.</span>
+        <span class="col-color-dot" style="background:${colors[c] || palette[i % palette.length]}"></span>
         <input type="text" value="${esc(c)}" data-idx="${i}" class="col-key" placeholder="ID" />
         <input type="text" value="${esc(labels[c] || c)}" data-idx="${i}" class="col-label" placeholder="Nombre" />
         <input type="number" value="${project.wipLimits?.[c] || ""}" data-idx="${i}" class="col-wip" placeholder="WIP" style="width:60px" />
@@ -846,8 +1001,10 @@ function openColumnsModal(project) {
     ).join("");
     list.querySelectorAll(".col-del").forEach((btn) => {
       btn.addEventListener("click", () => {
-        cols.splice(parseInt(btn.dataset.idx), 1);
-        delete labels[cols[parseInt(btn.dataset.idx)]];
+        const idx = parseInt(btn.dataset.idx);
+        const key = cols[idx];
+        delete labels[key];
+        cols.splice(idx, 1);
         renderCols();
       });
     });
@@ -873,20 +1030,23 @@ function openColumnsModal(project) {
     const newCols = [];
     const newLabels = {};
     const newWip = {};
-    list.querySelectorAll(".col-edit-item").forEach((item) => {
+    const newColors = {};
+    const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
+    list.querySelectorAll(".col-edit-item").forEach((item, i) => {
       const key = item.querySelector(".col-key").value.trim();
       const label = item.querySelector(".col-label").value.trim();
       const wip = parseInt(item.querySelector(".col-wip").value) || 0;
       if (key) {
         newCols.push(key);
         newLabels[key] = label || key;
+        newColors[key] = palette[i % palette.length];
         if (wip > 0) newWip[key] = wip;
       }
     });
     fetch(`${BACKEND_URL}/api/projects/${currentProjectId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ columns: newCols, columnLabels: newLabels, wipLimits: newWip }),
+      body: JSON.stringify({ columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip }),
     }).then(() => {
       overlay.remove();
       openProject(currentProjectId);

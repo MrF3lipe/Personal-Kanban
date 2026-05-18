@@ -2,90 +2,1307 @@
   "projects": {
     "demo": {
       "name": "Demo Kanban",
-      "description": "Proyecto de ejemplo con tareas demo",
-      "columns": ["pending", "in-progress", "in-review", "completed"],
-      "columnLabels": { "pending": "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", "completed": "Completadas" },
-      "wipLimits": { "in-progress": 3, "in-review": 2 },
+      "description": "Tablero de ejemplo para probar todas las funcionalidades del sistema",
+      "password": "",
+      "columns": [
+        "pending",
+        "in-progress",
+        "in-review",
+        "completed"
+      ],
+      "columnLabels": {
+        "pending": "Pendientes",
+        "in-progress": "En Proceso",
+        "in-review": "En Revisión",
+        "completed": "Completadas"
+      },
+      "columnColors": {
+        "pending": "#58a6ff",
+        "in-progress": "#d29922",
+        "in-review": "#bc8cff",
+        "completed": "#3fb950"
+      },
+      "wipLimits": {
+        "in-progress": 3,
+        "in-review": 2
+      },
       "createdAt": "2026-05-17T12:00:00.000Z",
       "createdBy": "Admin"
     },
     "v2": {
-      "name": "Kanban v2 - 50 ideas",
-      "description": "Seguimiento de las 50 ideas para la versión 2.0",
-      "columns": ["backlog", "planned", "in-progress", "done"],
-      "columnLabels": { "backlog": "Backlog", "planned": "Planeado", "in-progress": "En Proceso", "done": "Completado" },
-      "wipLimits": { "in-progress": 5 },
+      "name": "Kanban v2 — Roadmap",
+      "description": "Seguimiento de funcionalidades planeadas para la versión 2.0",
+      "password": "",
+      "columns": [
+        "backlog",
+        "planned",
+        "in-progress",
+        "done"
+      ],
+      "columnLabels": {
+        "backlog": "Backlog",
+        "planned": "Planeado",
+        "in-progress": "En Proceso",
+        "done": "Completado"
+      },
+      "columnColors": {
+        "backlog": "#484f58",
+        "planned": "#39d2c0",
+        "in-progress": "#d29922",
+        "done": "#3fb950"
+      },
+      "wipLimits": {
+        "in-progress": 5
+      },
       "createdAt": "2026-05-17T12:30:00.000Z",
       "createdBy": "Admin"
     }
   },
   "columns": {
-    "demo": ["pending", "in-progress", "in-review", "completed"],
-    "v2": ["backlog", "planned", "in-progress", "done"]
+    "demo": [
+      "pending",
+      "in-progress",
+      "in-review",
+      "completed"
+    ],
+    "v2": [
+      "backlog",
+      "planned",
+      "in-progress",
+      "done"
+    ]
   },
   "tasks": {
     "demo": [
-      { "id": "t1", "projectId": "demo", "title": "Diseñar layout principal", "description": "Definir estructura del tablero kanban", "status": "completed", "priority": "p1", "tags": ["diseño", "ux"], "deadline": "2026-05-20", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 0, "createdAt": "2026-05-17T12:00:00.000Z", "updatedAt": "2026-05-17T12:00:00.000Z" },
-      { "id": "t2", "projectId": "demo", "title": "Implementar drag & drop", "description": "Usar HTML5 Drag and Drop API con soporte táctil", "status": "in-progress", "priority": "p0", "tags": ["frontend", "core"], "deadline": "2026-05-25", "assignee": "Dev", "createdBy": "Admin", "lastModifiedBy": "Dev", "order": 0, "createdAt": "2026-05-17T12:01:00.000Z", "updatedAt": "2026-05-17T12:01:00.000Z" },
-      { "id": "t3", "projectId": "demo", "title": "Conectar Socket.IO", "description": "Sincronización en tiempo real entre usuarios", "status": "in-review", "priority": "p1", "tags": ["backend", "tiempo-real"], "deadline": "2026-05-22", "assignee": "Dev", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 0, "createdAt": "2026-05-17T12:02:00.000Z", "updatedAt": "2026-05-17T12:02:00.000Z" },
-      { "id": "t4", "projectId": "demo", "title": "Sistema de autenticación", "description": "Login por nombre de usuario sin contraseña", "status": "pending", "priority": "p2", "tags": ["auth"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 0, "createdAt": "2026-05-17T12:03:00.000Z", "updatedAt": "2026-05-17T12:03:00.000Z" },
-      { "id": "t5", "projectId": "demo", "title": "Probar en múltiples dispositivos", "description": "Verificar que funcione en Chrome, Firefox, Safari y móviles", "status": "pending", "priority": "p3", "tags": ["qa"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 1, "createdAt": "2026-05-17T12:04:00.000Z", "updatedAt": "2026-05-17T12:04:00.000Z" }
+      {
+        "id": "t1",
+        "projectId": "demo",
+        "title": "Diseñar layout principal",
+        "description": "Definir estructura del tablero kanban con columnas y tarjetas responsivas",
+        "status": "completed",
+        "priority": "p1",
+        "tags": [
+          "diseño",
+          "ux"
+        ],
+        "deadline": "2026-05-19",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 0,
+        "createdAt": "2026-05-17T12:01:00.000Z",
+        "updatedAt": "2026-05-17T23:11:04.444Z"
+      },
+      {
+        "id": "t2",
+        "projectId": "demo",
+        "title": "Implementar drag & drop",
+        "description": "Arrastrar tarjetas entre columnas usando HTML5 DnD API con soporte táctil",
+        "status": "in-review",
+        "priority": "p0",
+        "tags": [
+          "frontend",
+          "core"
+        ],
+        "deadline": "2026-05-24",
+        "assignee": "Dev",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 0,
+        "createdAt": "2026-05-17T12:01:00.000Z",
+        "updatedAt": "2026-05-18T13:57:57.069Z"
+      },
+      {
+        "id": "t3",
+        "projectId": "demo",
+        "title": "Conectar Socket.IO",
+        "description": "Sincronización en tiempo real: todos los usuarios ven los cambios al instante",
+        "status": "in-progress",
+        "priority": "p1",
+        "tags": [
+          "backend",
+          "tiempo-real"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": "Felipe",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 0,
+        "createdAt": "2026-05-17T12:02:00.000Z",
+        "updatedAt": "2026-05-18T13:57:46.610Z"
+      },
+      {
+        "id": "t4",
+        "projectId": "demo",
+        "title": "Sistema de autenticación",
+        "description": "Login por nombre de usuario sin contraseña, persistido en localStorage",
+        "status": "pending",
+        "priority": "p2",
+        "tags": [
+          "auth"
+        ],
+        "deadline": null,
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 0,
+        "createdAt": "2026-05-17T12:03:00.000Z",
+        "updatedAt": "2026-05-17T23:10:50.463Z"
+      },
+      {
+        "id": "t5",
+        "projectId": "demo",
+        "title": "Probar en múltiples dispositivos",
+        "description": "Verificar funcionamiento en Chrome, Firefox, Safari, Edge y móviles",
+        "status": "pending",
+        "priority": "p3",
+        "tags": [
+          "qa"
+        ],
+        "deadline": null,
+        "assignee": "Felipe",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 1,
+        "createdAt": "2026-05-17T12:04:00.000Z",
+        "updatedAt": "2026-05-18T16:53:54.230Z"
+      },
+      {
+        "id": "t6",
+        "projectId": "demo",
+        "title": "Tema claro/oscuro",
+        "description": "Toggle para cambiar entre tema oscuro y claro con persistencia en localStorage",
+        "status": "in-progress",
+        "priority": "p2",
+        "tags": [
+          "ux",
+          "frontend"
+        ],
+        "deadline": "2026-05-22",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 2,
+        "createdAt": "2026-05-17T12:05:00.000Z",
+        "updatedAt": "2026-05-17T12:05:00.000Z"
+      },
+      {
+        "id": "t7",
+        "projectId": "demo",
+        "title": "Exportar proyecto",
+        "description": "Descargar todo el proyecto como archivo JSON para backup o migración",
+        "status": "in-review",
+        "priority": "p2",
+        "tags": [
+          "utilidad"
+        ],
+        "deadline": "2026-05-23",
+        "assignee": "Felipe",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "order": 3,
+        "createdAt": "2026-05-17T12:06:00.000Z",
+        "updatedAt": "2026-05-17T12:06:00.000Z"
+      },
+      {
+        "id": "t8",
+        "projectId": "demo",
+        "title": "Atajos de teclado",
+        "description": "N: nueva tarea, B: cambiar vista, F: buscar, Esc: cerrar modal, ?: ayuda",
+        "status": "completed",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": "Felipe",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 4,
+        "createdAt": "2026-05-17T12:07:00.000Z",
+        "updatedAt": "2026-05-17T12:07:00.000Z"
+      },
+      {
+        "id": "t9",
+        "projectId": "demo",
+        "title": "Filtros por prioridad y etiquetas",
+        "description": "Filtrar tareas por nivel de prioridad, persona asignada y etiquetas",
+        "status": "completed",
+        "priority": "p1",
+        "tags": [
+          "ux",
+          "core"
+        ],
+        "deadline": "2026-05-19",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 5,
+        "createdAt": "2026-05-17T12:08:00.000Z",
+        "updatedAt": "2026-05-17T12:08:00.000Z"
+      },
+      {
+        "id": "t10",
+        "projectId": "demo",
+        "title": "Vista lista de tareas",
+        "description": "Tabla con todas las tareas ordenables por estado, prioridad y asignado",
+        "status": "completed",
+        "priority": "p1",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 6,
+        "createdAt": "2026-05-17T12:09:00.000Z",
+        "updatedAt": "2026-05-17T12:09:00.000Z"
+      },
+      {
+        "id": "6a18427d",
+        "projectId": "demo",
+        "title": "Probar en múltiples dispositivos",
+        "description": "Verificar funcionamiento en Chrome, Firefox, Safari, Edge y móviles",
+        "status": "pending",
+        "priority": "p3",
+        "tags": [
+          "qa"
+        ],
+        "deadline": null,
+        "assignee": "Felipe",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T16:53:30.009Z",
+        "updatedAt": "2026-05-18T16:53:58.929Z"
+      },
+      {
+        "id": "34a44937",
+        "projectId": "demo",
+        "title": "Sistema de autenticación",
+        "description": "Login por nombre de usuario sin contraseña, persistido en localStorage",
+        "status": "pending",
+        "priority": "p2",
+        "tags": [
+          "auth"
+        ],
+        "deadline": null,
+        "assignee": "Admin",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T16:53:34.084Z",
+        "updatedAt": "2026-05-18T16:53:34.084Z"
+      },
+      {
+        "id": "fdb7b7b6",
+        "projectId": "demo",
+        "title": "Probar en múltiples dispositivos",
+        "description": "Verificar funcionamiento en Chrome, Firefox, Safari, Edge y móviles",
+        "status": "pending",
+        "priority": "p3",
+        "tags": [
+          "qa"
+        ],
+        "deadline": null,
+        "assignee": "Felipe",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T16:53:42.566Z",
+        "updatedAt": "2026-05-18T16:53:42.566Z"
+      },
+      {
+        "id": "a95e8740",
+        "projectId": "demo",
+        "title": "Sistema de autenticación",
+        "description": "Login por nombre de usuario sin contraseña, persistido en localStorage",
+        "status": "pending",
+        "priority": "p2",
+        "tags": [
+          "auth"
+        ],
+        "deadline": null,
+        "assignee": "Admin",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T16:53:43.813Z",
+        "updatedAt": "2026-05-18T16:53:43.813Z"
+      },
+      {
+        "id": "ee495f29",
+        "projectId": "demo",
+        "title": "Probar en múltiples dispositivos",
+        "description": "Verificar funcionamiento en Chrome, Firefox, Safari, Edge y móviles",
+        "status": "pending",
+        "priority": "p3",
+        "tags": [
+          "qa"
+        ],
+        "deadline": null,
+        "assignee": "Felipe",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T16:53:46.443Z",
+        "updatedAt": "2026-05-18T16:53:46.443Z"
+      }
     ],
     "v2": [
-      { "id": "v1", "projectId": "v2", "title": "Asignación de tareas a usuarios", "description": "Poder asignar uno o más usuarios a cada tarea", "status": "done", "priority": "p0", "tags": ["colaboración"], "deadline": "2026-05-18", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 0, "createdAt": "2026-05-17T12:30:00.000Z", "updatedAt": "2026-05-17T12:30:00.000Z" },
-      { "id": "v2", "projectId": "v2", "title": "Prioridades P0-P3 con colores", "description": "Etiquetas de prioridad visuales en cada tarjeta", "status": "done", "priority": "p0", "tags": ["ux"], "deadline": "2026-05-18", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 1, "createdAt": "2026-05-17T12:31:00.000Z", "updatedAt": "2026-05-17T12:31:00.000Z" },
-      { "id": "v3", "projectId": "v2", "title": "Tags / etiquetas por tarea", "description": "Categorías como bug, feature, urgent", "status": "done", "priority": "p0", "tags": ["core"], "deadline": "2026-05-18", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 2, "createdAt": "2026-05-17T12:32:00.000Z", "updatedAt": "2026-05-17T12:32:00.000Z" },
-      { "id": "v4", "projectId": "v2", "title": "Deadlines con alerts visuales", "description": "Fecha límite por tarea + color rojo si está vencida", "status": "done", "priority": "p0", "tags": ["core"], "deadline": "2026-05-19", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 3, "createdAt": "2026-05-17T12:33:00.000Z", "updatedAt": "2026-05-17T12:33:00.000Z" },
-      { "id": "v5", "projectId": "v2", "title": "Comentarios por tarea", "description": "Hilo de discusión en tiempo real en cada tarea", "status": "done", "priority": "p0", "tags": ["colaboración"], "deadline": "2026-05-19", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 4, "createdAt": "2026-05-17T12:34:00.000Z", "updatedAt": "2026-05-17T12:34:00.000Z" },
-      { "id": "v6", "projectId": "v2", "title": "Checklists / subtareas", "description": "Lista de verificación dentro de cada tarea", "status": "done", "priority": "p0", "tags": ["core"], "deadline": "2026-05-19", "assignee": "Admin", "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 5, "createdAt": "2026-05-17T12:35:00.000Z", "updatedAt": "2026-05-17T12:35:00.000Z" },
-      { "id": "v7", "projectId": "v2", "title": "Tema claro/oscuro toggle", "description": "Que cada usuario pueda elegir su tema preferido", "status": "done", "priority": "p1", "tags": ["ux"], "deadline": "2026-05-20", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 6, "createdAt": "2026-05-17T12:36:00.000Z", "updatedAt": "2026-05-17T12:36:00.000Z" },
-      { "id": "v8", "projectId": "v2", "title": "Vista lista (tabla)", "description": "Tabla ordenable con todas las tareas", "status": "done", "priority": "p1", "tags": ["ux"], "deadline": "2026-05-20", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 7, "createdAt": "2026-05-17T12:37:00.000Z", "updatedAt": "2026-05-17T12:37:00.000Z" },
-      { "id": "v9", "projectId": "v2", "title": "Columnas personalizables", "description": "Crear, renombrar, reordenar y eliminar columnas", "status": "done", "priority": "p1", "tags": ["core"], "deadline": "2026-05-20", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 8, "createdAt": "2026-05-17T12:38:00.000Z", "updatedAt": "2026-05-17T12:38:00.000Z" },
-      { "id": "v10", "projectId": "v2", "title": "WIP limits por columna", "description": "Límite de tareas en progreso por columna", "status": "done", "priority": "p1", "tags": ["core"], "deadline": "2026-05-20", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 9, "createdAt": "2026-05-17T12:39:00.000Z", "updatedAt": "2026-05-17T12:39:00.000Z" },
-      { "id": "v11", "projectId": "v2", "title": "Búsqueda global de tareas", "description": "Buscar por título y descripción en tiempo real", "status": "done", "priority": "p1", "tags": ["ux"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 10, "createdAt": "2026-05-17T12:40:00.000Z", "updatedAt": "2026-05-17T12:40:00.000Z" },
-      { "id": "v12", "projectId": "v2", "title": "Filtros avanzados", "description": "Filtrar por prioridad, asignado y etiquetas", "status": "done", "priority": "p1", "tags": ["ux"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 11, "createdAt": "2026-05-17T12:41:00.000Z", "updatedAt": "2026-05-17T12:41:00.000Z" },
-      { "id": "v13", "projectId": "v2", "title": "Atajos de teclado", "description": "N=nueva tarea, B=cambiar vista, F=buscar, Esc=cerrar", "status": "done", "priority": "p2", "tags": ["ux"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 12, "createdAt": "2026-05-17T12:42:00.000Z", "updatedAt": "2026-05-17T12:42:00.000Z" },
-      { "id": "v14", "projectId": "v2", "title": "Colapsar columnas", "description": "Botón para minimizar columnas y tener más espacio", "status": "done", "priority": "p2", "tags": ["ux"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 13, "createdAt": "2026-05-17T12:43:00.000Z", "updatedAt": "2026-05-17T12:43:00.000Z" },
-      { "id": "v15", "projectId": "v2", "title": "Reacciones con emojis", "description": "👍 ❤️ 🎉 etc en cada tarjeta", "status": "done", "priority": "p2", "tags": ["colaboración"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 14, "createdAt": "2026-05-17T12:44:00.000Z", "updatedAt": "2026-05-17T12:44:00.000Z" },
-      { "id": "v16", "projectId": "v2", "title": "Actividad reciente (audit log)", "description": "Feed de quién hizo qué en el proyecto", "status": "done", "priority": "p1", "tags": ["colaboración"], "deadline": "2026-05-21", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 15, "createdAt": "2026-05-17T12:45:00.000Z", "updatedAt": "2026-05-17T12:45:00.000Z" },
-      { "id": "v17", "projectId": "v2", "title": "Exportar proyecto a JSON", "description": "Descargar todo el proyecto como archivo JSON", "status": "done", "priority": "p2", "tags": ["utilidad"], "deadline": "2026-05-22", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 16, "createdAt": "2026-05-17T12:46:00.000Z", "updatedAt": "2026-05-17T12:46:00.000Z" },
-      { "id": "v18", "projectId": "v2", "title": "Auto-save", "description": "Guardar automáticamente al editar título/descripción", "status": "done", "priority": "p2", "tags": ["ux"], "deadline": "2026-05-22", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 17, "createdAt": "2026-05-17T12:47:00.000Z", "updatedAt": "2026-05-17T12:47:00.000Z" },
-      { "id": "v19", "projectId": "v2", "title": "Soporte táctil para drag & drop", "description": "Arrastrar tarjetas en dispositivos móviles", "status": "done", "priority": "p2", "tags": ["mobile"], "deadline": "2026-05-22", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 18, "createdAt": "2026-05-17T12:48:00.000Z", "updatedAt": "2026-05-17T12:48:00.000Z" },
-      { "id": "v20", "projectId": "v2", "title": "Usuarios online/offline", "description": "Ver quién está conectado con indicador visual + toggle manual", "status": "done", "priority": "p1", "tags": ["tiempo-real", "colaboración"], "deadline": "2026-05-18", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 19, "createdAt": "2026-05-17T12:49:00.000Z", "updatedAt": "2026-05-17T12:49:00.000Z" },
-      { "id": "v21", "projectId": "v2", "title": "Sesiones: compartir ID de proyecto", "description": "Cualquiera con el ID puede unirse al proyecto", "status": "done", "priority": "p0", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 20, "createdAt": "2026-05-17T12:50:00.000Z", "updatedAt": "2026-05-17T12:50:00.000Z" },
-      { "id": "v22", "projectId": "v2", "title": "Múltiples proyectos", "description": "Página principal con lista de proyectos, cada uno con su kanban", "status": "done", "priority": "p0", "tags": ["core"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 21, "createdAt": "2026-05-17T12:51:00.000Z", "updatedAt": "2026-05-17T12:51:00.000Z" },
-      { "id": "v23", "projectId": "v2", "title": "Archivos adjuntos", "description": "Subir imágenes y documentos a las tareas", "status": "in-progress", "priority": "p2", "tags": ["feature"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 22, "createdAt": "2026-05-17T12:52:00.000Z", "updatedAt": "2026-05-17T12:52:00.000Z" },
-      { "id": "v24", "projectId": "v2", "title": "Vista calendario", "description": "Tareas con deadline en un calendario mensual", "status": "planned", "priority": "p2", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 23, "createdAt": "2026-05-17T12:53:00.000Z", "updatedAt": "2026-05-17T12:53:00.000Z" },
-      { "id": "v25", "projectId": "v2", "title": "Vista Gantt", "description": "Timeline visual con dependencias entre tareas", "status": "backlog", "priority": "p3", "tags": ["ux", "avanzado"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 24, "createdAt": "2026-05-17T12:54:00.000Z", "updatedAt": "2026-05-17T12:54:00.000Z" },
-      { "id": "v26", "projectId": "v2", "title": "Roles: admin, editor, viewer", "description": "Permisos diferenciados para cada proyecto", "status": "backlog", "priority": "p1", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 25, "createdAt": "2026-05-17T12:55:00.000Z", "updatedAt": "2026-05-17T12:55:00.000Z" },
-      { "id": "v27", "projectId": "v2", "title": "Dependencias entre tareas", "description": "Relaciones de bloqueo: esta tarea depende de esta otra", "status": "backlog", "priority": "p2", "tags": ["avanzado"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 26, "createdAt": "2026-05-17T12:56:00.000Z", "updatedAt": "2026-05-17T12:56:00.000Z" },
-      { "id": "v28", "projectId": "v2", "title": "Tareas recurrentes", "description": "Se repiten cada X días/semana/mes automáticamente", "status": "backlog", "priority": "p2", "tags": ["core"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 27, "createdAt": "2026-05-17T12:57:00.000Z", "updatedAt": "2026-05-17T12:57:00.000Z" },
-      { "id": "v29", "projectId": "v2", "title": "Menciones @usuario", "description": "Notificar a usuarios con @username en comentarios", "status": "backlog", "priority": "p2", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 28, "createdAt": "2026-05-17T12:58:00.000Z", "updatedAt": "2026-05-17T12:58:00.000Z" },
-      { "id": "v30", "projectId": "v2", "title": "Asignación múltiple", "description": "Varias personas pueden estar asignadas a una tarea", "status": "backlog", "priority": "p2", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 29, "createdAt": "2026-05-17T12:59:00.000Z", "updatedAt": "2026-05-17T12:59:00.000Z" },
-      { "id": "v31", "projectId": "v2", "title": "Votación de tareas (👍)", "description": "Priorización colaborativa con votos", "status": "backlog", "priority": "p3", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 30, "createdAt": "2026-05-17T13:00:00.000Z", "updatedAt": "2026-05-17T13:00:00.000Z" },
-      { "id": "v32", "projectId": "v2", "title": "Historial de cambios completo", "description": "Audit log detallado: quién movió/editó/creó cada tarea", "status": "done", "priority": "p1", "tags": ["colaboración"], "deadline": "2026-05-20", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 31, "createdAt": "2026-05-17T13:01:00.000Z", "updatedAt": "2026-05-17T13:01:00.000Z" },
-      { "id": "v33", "projectId": "v2", "title": "Webhooks", "description": "Notificar a Discord/Slack cuando algo cambia", "status": "backlog", "priority": "p3", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 32, "createdAt": "2026-05-17T13:02:00.000Z", "updatedAt": "2026-05-17T13:02:00.000Z" },
-      { "id": "v34", "projectId": "v2", "title": "API REST pública", "description": "Documentación de la API para integrar con bots", "status": "backlog", "priority": "p2", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 33, "createdAt": "2026-05-17T13:03:00.000Z", "updatedAt": "2026-05-17T13:03:00.000Z" },
-      { "id": "v35", "projectId": "v2", "title": "Importar de Trello/Notion/Jira", "description": "Migrar datos desde otras herramientas", "status": "backlog", "priority": "p3", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 34, "createdAt": "2026-05-17T13:04:00.000Z", "updatedAt": "2026-05-17T13:04:00.000Z" },
-      { "id": "v36", "projectId": "v2", "title": "Integración con GitHub", "description": "Linkear PRs y commits a tareas", "status": "backlog", "priority": "p3", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 35, "createdAt": "2026-05-17T13:05:00.000Z", "updatedAt": "2026-05-17T13:05:00.000Z" },
-      { "id": "v37", "projectId": "v2", "title": "Notificaciones push", "description": "Notificaciones en escritorio y móvil", "status": "backlog", "priority": "p2", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 36, "createdAt": "2026-05-17T13:06:00.000Z", "updatedAt": "2026-05-17T13:06:00.000Z" },
-      { "id": "v38", "projectId": "v2", "title": "Modo offline (PWA)", "description": "Service Worker para funcionar sin internet", "status": "backlog", "priority": "p3", "tags": ["avanzado"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 37, "createdAt": "2026-05-17T13:07:00.000Z", "updatedAt": "2026-05-17T13:07:00.000Z" },
-      { "id": "v39", "projectId": "v2", "title": "Base de datos real (SQLite/Postgres)", "description": "Migrar de JSON a DB persistente y escalable", "status": "backlog", "priority": "p2", "tags": ["backend"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 38, "createdAt": "2026-05-17T13:08:00.000Z", "updatedAt": "2026-05-17T13:08:00.000Z" },
-      { "id": "v40", "projectId": "v2", "title": "Bot de Telegram/Discord", "description": "Crear tareas y consultar desde chat", "status": "backlog", "priority": "p3", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 39, "createdAt": "2026-05-17T13:09:00.000Z", "updatedAt": "2026-05-17T13:09:00.000Z" },
-      { "id": "v41", "projectId": "v2", "title": "Modo quiosco / TV", "description": "Pantalla grande para ver el tablero en la oficina", "status": "backlog", "priority": "p3", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 40, "createdAt": "2026-05-17T13:10:00.000Z", "updatedAt": "2026-05-17T13:10:00.000Z" },
-      { "id": "v42", "projectId": "v2", "title": "Sonidos al mover tareas", "description": "Feedback auditivo opcional al arrastrar", "status": "planned", "priority": "p3", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 41, "createdAt": "2026-05-17T13:11:00.000Z", "updatedAt": "2026-05-17T13:11:00.000Z" },
-      { "id": "v43", "projectId": "v2", "title": "Encuestas rápidas", "description": "Votación sí/no para decisiones del equipo", "status": "backlog", "priority": "p3", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 42, "createdAt": "2026-05-17T13:12:00.000Z", "updatedAt": "2026-05-17T13:12:00.000Z" },
-      { "id": "v44", "projectId": "v2", "title": "Zoom del tablero", "description": "Alejar/acercar para ver más o menos detalle", "status": "backlog", "priority": "p3", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 43, "createdAt": "2026-05-17T13:13:00.000Z", "updatedAt": "2026-05-17T13:13:00.000Z" },
-      { "id": "v45", "projectId": "v2", "title": "Conexión con Google Calendar", "description": "Sync deadlines con calendario externo", "status": "backlog", "priority": "p3", "tags": ["integraciones"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 44, "createdAt": "2026-05-17T13:14:00.000Z", "updatedAt": "2026-05-17T13:14:00.000Z" },
-      { "id": "v46", "projectId": "v2", "title": "Tablero múltiple por proyecto", "description": "Varios kanbans dentro de un proyecto", "status": "backlog", "priority": "p3", "tags": ["core"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 45, "createdAt": "2026-05-17T13:15:00.000Z", "updatedAt": "2026-05-17T13:15:00.000Z" },
-      { "id": "v47", "projectId": "v2", "title": "Tiempo estimado vs real", "description": "Trackear horas estimadas y reales por tarea", "status": "backlog", "priority": "p3", "tags": ["core"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 46, "createdAt": "2026-05-17T13:16:00.000Z", "updatedAt": "2026-05-17T13:16:00.000Z" },
-      { "id": "v48", "projectId": "v2", "title": "Watch/unwatch tareas", "description": "Seguir cambios de una tarea específica", "status": "backlog", "priority": "p3", "tags": ["colaboración"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 47, "createdAt": "2026-05-17T13:17:00.000Z", "updatedAt": "2026-05-17T13:17:00.000Z" },
-      { "id": "v49", "projectId": "v2", "title": "Modo presentación", "description": "Slideshow automático del tablero para daily standup", "status": "backlog", "priority": "p3", "tags": ["ux"], "deadline": null, "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 48, "createdAt": "2026-05-17T13:18:00.000Z", "updatedAt": "2026-05-17T13:18:00.000Z" },
-      { "id": "v50", "projectId": "v2", "title": "Deploy a GitHub Pages + backend cloud", "description": "Frontend estático en Pages, backend en Render/Railway", "status": "in-progress", "priority": "p0", "tags": ["devops", "core"], "deadline": "2026-05-25", "assignee": null, "createdBy": "Admin", "lastModifiedBy": "Admin", "order": 49, "createdAt": "2026-05-17T13:19:00.000Z", "updatedAt": "2026-05-17T13:19:00.000Z" }
+      {
+        "id": "v1",
+        "projectId": "v2",
+        "title": "Asignación de tareas a usuarios",
+        "description": "Poder asignar uno o más usuarios a cada tarea",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": "2026-05-18",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 0,
+        "createdAt": "2026-05-17T12:30:00.000Z",
+        "updatedAt": "2026-05-17T12:30:00.000Z"
+      },
+      {
+        "id": "v2",
+        "projectId": "v2",
+        "title": "Prioridades P0-P3 con colores",
+        "description": "Etiquetas de prioridad visuales en cada tarjeta",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-18",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 1,
+        "createdAt": "2026-05-17T12:31:00.000Z",
+        "updatedAt": "2026-05-17T12:31:00.000Z"
+      },
+      {
+        "id": "v3",
+        "projectId": "v2",
+        "title": "Tags / etiquetas por tarea",
+        "description": "Categorías como bug, feature, urgent",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "core"
+        ],
+        "deadline": "2026-05-18",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 2,
+        "createdAt": "2026-05-17T12:32:00.000Z",
+        "updatedAt": "2026-05-17T12:32:00.000Z"
+      },
+      {
+        "id": "v4",
+        "projectId": "v2",
+        "title": "Deadlines con alerts visuales",
+        "description": "Fecha límite por tarea + color rojo si está vencida",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "core"
+        ],
+        "deadline": "2026-05-19",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 3,
+        "createdAt": "2026-05-17T12:33:00.000Z",
+        "updatedAt": "2026-05-17T12:33:00.000Z"
+      },
+      {
+        "id": "v5",
+        "projectId": "v2",
+        "title": "Comentarios por tarea",
+        "description": "Hilo de discusión en tiempo real en cada tarea",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": "2026-05-19",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 4,
+        "createdAt": "2026-05-17T12:34:00.000Z",
+        "updatedAt": "2026-05-17T12:34:00.000Z"
+      },
+      {
+        "id": "v6",
+        "projectId": "v2",
+        "title": "Checklists / subtareas",
+        "description": "Lista de verificación dentro de cada tarea",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "core"
+        ],
+        "deadline": "2026-05-19",
+        "assignee": "Admin",
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 5,
+        "createdAt": "2026-05-17T12:35:00.000Z",
+        "updatedAt": "2026-05-17T12:35:00.000Z"
+      },
+      {
+        "id": "v7",
+        "projectId": "v2",
+        "title": "Tema claro/oscuro toggle",
+        "description": "Que cada usuario pueda elegir su tema preferido",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 6,
+        "createdAt": "2026-05-17T12:36:00.000Z",
+        "updatedAt": "2026-05-17T12:36:00.000Z"
+      },
+      {
+        "id": "v8",
+        "projectId": "v2",
+        "title": "Vista lista (tabla)",
+        "description": "Tabla ordenable con todas las tareas",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 7,
+        "createdAt": "2026-05-17T12:37:00.000Z",
+        "updatedAt": "2026-05-17T12:37:00.000Z"
+      },
+      {
+        "id": "v9",
+        "projectId": "v2",
+        "title": "Columnas personalizables",
+        "description": "Crear, renombrar, reordenar y eliminar columnas",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "core"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 8,
+        "createdAt": "2026-05-17T12:38:00.000Z",
+        "updatedAt": "2026-05-17T12:38:00.000Z"
+      },
+      {
+        "id": "v10",
+        "projectId": "v2",
+        "title": "WIP limits por columna",
+        "description": "Límite de tareas en progreso por columna",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "core"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 9,
+        "createdAt": "2026-05-17T12:39:00.000Z",
+        "updatedAt": "2026-05-17T12:39:00.000Z"
+      },
+      {
+        "id": "v11",
+        "projectId": "v2",
+        "title": "Búsqueda global de tareas",
+        "description": "Buscar por título y descripción en tiempo real",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 10,
+        "createdAt": "2026-05-17T12:40:00.000Z",
+        "updatedAt": "2026-05-17T12:40:00.000Z"
+      },
+      {
+        "id": "v12",
+        "projectId": "v2",
+        "title": "Filtros avanzados",
+        "description": "Filtrar por prioridad, asignado y etiquetas",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 11,
+        "createdAt": "2026-05-17T12:41:00.000Z",
+        "updatedAt": "2026-05-17T12:41:00.000Z"
+      },
+      {
+        "id": "v13",
+        "projectId": "v2",
+        "title": "Atajos de teclado",
+        "description": "N=nueva tarea, B=cambiar vista, F=buscar, Esc=cerrar",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 12,
+        "createdAt": "2026-05-17T12:42:00.000Z",
+        "updatedAt": "2026-05-17T12:42:00.000Z"
+      },
+      {
+        "id": "v14",
+        "projectId": "v2",
+        "title": "Colapsar columnas",
+        "description": "Botón para minimizar columnas y tener más espacio",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 13,
+        "createdAt": "2026-05-17T12:43:00.000Z",
+        "updatedAt": "2026-05-17T12:43:00.000Z"
+      },
+      {
+        "id": "v15",
+        "projectId": "v2",
+        "title": "Reacciones con emojis",
+        "description": "👍 ❤️ 🎉 etc en cada tarjeta",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 14,
+        "createdAt": "2026-05-17T12:44:00.000Z",
+        "updatedAt": "2026-05-17T12:44:00.000Z"
+      },
+      {
+        "id": "v16",
+        "projectId": "v2",
+        "title": "Actividad reciente (audit log)",
+        "description": "Feed de quién hizo qué en el proyecto",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": "2026-05-21",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 15,
+        "createdAt": "2026-05-17T12:45:00.000Z",
+        "updatedAt": "2026-05-17T12:45:00.000Z"
+      },
+      {
+        "id": "v17",
+        "projectId": "v2",
+        "title": "Exportar proyecto a JSON",
+        "description": "Descargar todo el proyecto como archivo JSON",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "utilidad"
+        ],
+        "deadline": "2026-05-22",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 16,
+        "createdAt": "2026-05-17T12:46:00.000Z",
+        "updatedAt": "2026-05-17T12:46:00.000Z"
+      },
+      {
+        "id": "v18",
+        "projectId": "v2",
+        "title": "Auto-save",
+        "description": "Guardar automáticamente al editar título/descripción",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": "2026-05-22",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 17,
+        "createdAt": "2026-05-17T12:47:00.000Z",
+        "updatedAt": "2026-05-17T12:47:00.000Z"
+      },
+      {
+        "id": "v19",
+        "projectId": "v2",
+        "title": "Soporte táctil para drag & drop",
+        "description": "Arrastrar tarjetas en dispositivos móviles",
+        "status": "done",
+        "priority": "p2",
+        "tags": [
+          "mobile"
+        ],
+        "deadline": "2026-05-22",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 18,
+        "createdAt": "2026-05-17T12:48:00.000Z",
+        "updatedAt": "2026-05-17T12:48:00.000Z"
+      },
+      {
+        "id": "v20",
+        "projectId": "v2",
+        "title": "Usuarios online/offline",
+        "description": "Ver quién está conectado con indicador visual + toggle manual",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "tiempo-real",
+          "colaboración"
+        ],
+        "deadline": "2026-05-18",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 19,
+        "createdAt": "2026-05-17T12:49:00.000Z",
+        "updatedAt": "2026-05-17T12:49:00.000Z"
+      },
+      {
+        "id": "v21",
+        "projectId": "v2",
+        "title": "Sesiones: compartir ID de proyecto",
+        "description": "Cualquiera con el ID puede unirse al proyecto",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 20,
+        "createdAt": "2026-05-17T12:50:00.000Z",
+        "updatedAt": "2026-05-17T12:50:00.000Z"
+      },
+      {
+        "id": "v22",
+        "projectId": "v2",
+        "title": "Múltiples proyectos",
+        "description": "Página principal con lista de proyectos, cada uno con su kanban",
+        "status": "done",
+        "priority": "p0",
+        "tags": [
+          "core"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 21,
+        "createdAt": "2026-05-17T12:51:00.000Z",
+        "updatedAt": "2026-05-17T12:51:00.000Z"
+      },
+      {
+        "id": "v23",
+        "projectId": "v2",
+        "title": "Archivos adjuntos",
+        "description": "Subir imágenes y documentos a las tareas",
+        "status": "in-progress",
+        "priority": "p2",
+        "tags": [
+          "feature"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 22,
+        "createdAt": "2026-05-17T12:52:00.000Z",
+        "updatedAt": "2026-05-17T12:52:00.000Z"
+      },
+      {
+        "id": "v24",
+        "projectId": "v2",
+        "title": "Vista calendario",
+        "description": "Tareas con deadline en un calendario mensual",
+        "status": "planned",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 23,
+        "createdAt": "2026-05-17T12:53:00.000Z",
+        "updatedAt": "2026-05-17T12:53:00.000Z"
+      },
+      {
+        "id": "v26",
+        "projectId": "v2",
+        "title": "Roles: admin, editor, viewer",
+        "description": "Permisos diferenciados para cada proyecto",
+        "status": "backlog",
+        "priority": "p1",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 25,
+        "createdAt": "2026-05-17T12:55:00.000Z",
+        "updatedAt": "2026-05-17T12:55:00.000Z"
+      },
+      {
+        "id": "v27",
+        "projectId": "v2",
+        "title": "Dependencias entre tareas",
+        "description": "Relaciones de bloqueo: esta tarea depende de esta otra",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "avanzado"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 26,
+        "createdAt": "2026-05-17T12:56:00.000Z",
+        "updatedAt": "2026-05-17T12:56:00.000Z"
+      },
+      {
+        "id": "v28",
+        "projectId": "v2",
+        "title": "Tareas recurrentes",
+        "description": "Se repiten cada X días/semana/mes automáticamente",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "core"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 27,
+        "createdAt": "2026-05-17T12:57:00.000Z",
+        "updatedAt": "2026-05-17T12:57:00.000Z"
+      },
+      {
+        "id": "v29",
+        "projectId": "v2",
+        "title": "Menciones @usuario",
+        "description": "Notificar a usuarios con @username en comentarios",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 28,
+        "createdAt": "2026-05-17T12:58:00.000Z",
+        "updatedAt": "2026-05-17T12:58:00.000Z"
+      },
+      {
+        "id": "v30",
+        "projectId": "v2",
+        "title": "Asignación múltiple",
+        "description": "Varias personas pueden estar asignadas a una tarea",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 29,
+        "createdAt": "2026-05-17T12:59:00.000Z",
+        "updatedAt": "2026-05-17T12:59:00.000Z"
+      },
+      {
+        "id": "v31",
+        "projectId": "v2",
+        "title": "Votación de tareas (👍)",
+        "description": "Priorización colaborativa con votos",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 30,
+        "createdAt": "2026-05-17T13:00:00.000Z",
+        "updatedAt": "2026-05-17T13:00:00.000Z"
+      },
+      {
+        "id": "v32",
+        "projectId": "v2",
+        "title": "Historial de cambios completo",
+        "description": "Audit log detallado: quién movió/editó/creó cada tarea",
+        "status": "done",
+        "priority": "p1",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": "2026-05-20",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 31,
+        "createdAt": "2026-05-17T13:01:00.000Z",
+        "updatedAt": "2026-05-17T13:01:00.000Z"
+      },
+      {
+        "id": "v33",
+        "projectId": "v2",
+        "title": "Webhooks",
+        "description": "Notificar a Discord/Slack cuando algo cambia",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 32,
+        "createdAt": "2026-05-17T13:02:00.000Z",
+        "updatedAt": "2026-05-17T13:02:00.000Z"
+      },
+      {
+        "id": "v34",
+        "projectId": "v2",
+        "title": "API REST pública",
+        "description": "Documentación de la API para integrar con bots",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 33,
+        "createdAt": "2026-05-17T13:03:00.000Z",
+        "updatedAt": "2026-05-17T13:03:00.000Z"
+      },
+      {
+        "id": "v35",
+        "projectId": "v2",
+        "title": "Importar de Trello/Notion/Jira",
+        "description": "Migrar datos desde otras herramientas",
+        "status": "planned",
+        "priority": "p3",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 34,
+        "createdAt": "2026-05-17T13:04:00.000Z",
+        "updatedAt": "2026-05-18T13:57:26.906Z"
+      },
+      {
+        "id": "v36",
+        "projectId": "v2",
+        "title": "Integración con GitHub",
+        "description": "Linkear PRs y commits a tareas",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 35,
+        "createdAt": "2026-05-17T13:05:00.000Z",
+        "updatedAt": "2026-05-17T13:05:00.000Z"
+      },
+      {
+        "id": "v37",
+        "projectId": "v2",
+        "title": "Notificaciones push",
+        "description": "Notificaciones en escritorio y móvil",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 36,
+        "createdAt": "2026-05-17T13:06:00.000Z",
+        "updatedAt": "2026-05-17T13:06:00.000Z"
+      },
+      {
+        "id": "v38",
+        "projectId": "v2",
+        "title": "Modo offline (PWA)",
+        "description": "Service Worker para funcionar sin internet",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "avanzado"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 37,
+        "createdAt": "2026-05-17T13:07:00.000Z",
+        "updatedAt": "2026-05-17T13:07:00.000Z"
+      },
+      {
+        "id": "v39",
+        "projectId": "v2",
+        "title": "Base de datos real (SQLite/Postgres)",
+        "description": "Migrar de JSON a DB persistente y escalable",
+        "status": "backlog",
+        "priority": "p2",
+        "tags": [
+          "backend"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 38,
+        "createdAt": "2026-05-17T13:08:00.000Z",
+        "updatedAt": "2026-05-17T13:08:00.000Z"
+      },
+      {
+        "id": "v40",
+        "projectId": "v2",
+        "title": "Bot de Telegram/Discord",
+        "description": "Crear tareas y consultar desde chat",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 39,
+        "createdAt": "2026-05-17T13:09:00.000Z",
+        "updatedAt": "2026-05-17T13:09:00.000Z"
+      },
+      {
+        "id": "v41",
+        "projectId": "v2",
+        "title": "Modo quiosco / TV",
+        "description": "Pantalla grande para ver el tablero en la oficina",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 40,
+        "createdAt": "2026-05-17T13:10:00.000Z",
+        "updatedAt": "2026-05-17T13:10:00.000Z"
+      },
+      {
+        "id": "v42",
+        "projectId": "v2",
+        "title": "Sonidos al mover tareas",
+        "description": "Feedback auditivo opcional al arrastrar",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Felipe",
+        "order": 41,
+        "createdAt": "2026-05-17T13:11:00.000Z",
+        "updatedAt": "2026-05-18T13:57:27.769Z"
+      },
+      {
+        "id": "v43",
+        "projectId": "v2",
+        "title": "Encuestas rápidas",
+        "description": "Votación sí/no para decisiones del equipo",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 42,
+        "createdAt": "2026-05-17T13:12:00.000Z",
+        "updatedAt": "2026-05-17T13:12:00.000Z"
+      },
+      {
+        "id": "v44",
+        "projectId": "v2",
+        "title": "Zoom del tablero",
+        "description": "Alejar/acercar para ver más o menos detalle",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 43,
+        "createdAt": "2026-05-17T13:13:00.000Z",
+        "updatedAt": "2026-05-17T13:13:00.000Z"
+      },
+      {
+        "id": "v45",
+        "projectId": "v2",
+        "title": "Conexión con Google Calendar",
+        "description": "Sync deadlines con calendario externo",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "integraciones"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 44,
+        "createdAt": "2026-05-17T13:14:00.000Z",
+        "updatedAt": "2026-05-17T13:14:00.000Z"
+      },
+      {
+        "id": "v46",
+        "projectId": "v2",
+        "title": "Tablero múltiple por proyecto",
+        "description": "Varios kanbans dentro de un proyecto",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "core"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 45,
+        "createdAt": "2026-05-17T13:15:00.000Z",
+        "updatedAt": "2026-05-17T13:15:00.000Z"
+      },
+      {
+        "id": "v47",
+        "projectId": "v2",
+        "title": "Tiempo estimado vs real",
+        "description": "Trackear horas estimadas y reales por tarea",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "core"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 46,
+        "createdAt": "2026-05-17T13:16:00.000Z",
+        "updatedAt": "2026-05-17T13:16:00.000Z"
+      },
+      {
+        "id": "v48",
+        "projectId": "v2",
+        "title": "Watch/unwatch tareas",
+        "description": "Seguir cambios de una tarea específica",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "colaboración"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 47,
+        "createdAt": "2026-05-17T13:17:00.000Z",
+        "updatedAt": "2026-05-17T13:17:00.000Z"
+      },
+      {
+        "id": "v49",
+        "projectId": "v2",
+        "title": "Modo presentación",
+        "description": "Slideshow automático del tablero para daily standup",
+        "status": "backlog",
+        "priority": "p3",
+        "tags": [
+          "ux"
+        ],
+        "deadline": null,
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 48,
+        "createdAt": "2026-05-17T13:18:00.000Z",
+        "updatedAt": "2026-05-17T13:18:00.000Z"
+      },
+      {
+        "id": "v50",
+        "projectId": "v2",
+        "title": "Deploy a GitHub Pages + backend cloud",
+        "description": "Frontend estático en Pages, backend en Render/Railway",
+        "status": "in-progress",
+        "priority": "p0",
+        "tags": [
+          "devops",
+          "core"
+        ],
+        "deadline": "2026-05-25",
+        "assignee": null,
+        "createdBy": "Admin",
+        "lastModifiedBy": "Admin",
+        "order": 49,
+        "createdAt": "2026-05-17T13:19:00.000Z",
+        "updatedAt": "2026-05-17T13:19:00.000Z"
+      }
     ]
   },
-  "comments": {},
+  "comments": {
+    "v2": {}
+  },
   "checklists": {},
-  "activity": {},
+  "activity": {
+    "v2": [],
+    "demo": [
+      {
+        "type": "edit",
+        "taskId": "6a18427d",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:58.929Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "t5",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:54.230Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "t5",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:49.524Z"
+      },
+      {
+        "type": "create",
+        "taskId": "ee495f29",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:46.443Z"
+      },
+      {
+        "type": "create",
+        "taskId": "a95e8740",
+        "taskTitle": "Sistema de autenticación",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:43.813Z"
+      },
+      {
+        "type": "create",
+        "taskId": "fdb7b7b6",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:42.566Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "6a18427d",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:37.281Z"
+      },
+      {
+        "type": "create",
+        "taskId": "34a44937",
+        "taskTitle": "Sistema de autenticación",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:34.084Z"
+      },
+      {
+        "type": "create",
+        "taskId": "6a18427d",
+        "taskTitle": "Probar en múltiples dispositivos",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T16:53:30.009Z"
+      }
+    ]
+  },
   "reactions": {}
 }

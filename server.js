@@ -43,9 +43,15 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/api/ping", (req, res) => res.json({ ok: true }));
 
 // --- Projects ---
+function stripPassword(p) {
+  if (!p) return p;
+  const { password, ...rest } = p;
+  return rest;
+}
+
 app.get("/api/projects", (req, res) => {
   const db = readDB();
-  const list = Object.entries(db.projects).map(([id, p]) => ({ id, ...p }));
+  const list = Object.entries(db.projects).map(([id, p]) => ({ id, ...stripPassword(p) }));
   res.json(list);
 });
 
@@ -55,8 +61,10 @@ app.post("/api/projects", (req, res) => {
   const project = {
     name: req.body.name || "Sin nombre",
     description: req.body.description || "",
+    password: req.body.password || "",
     columns: req.body.columns || ["pending", "in-progress", "in-review", "completed"],
     columnLabels: req.body.columnLabels || { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
+    columnColors: req.body.columnColors || {},
     wipLimits: req.body.wipLimits || {},
     createdAt: now(),
     createdBy: req.body.createdBy || "Anónimo",
@@ -69,14 +77,22 @@ app.post("/api/projects", (req, res) => {
   db.activity[id] = db.activity[id] || [];
   db.reactions[id] = db.reactions[id] || {};
   writeDB(db);
-  res.status(201).json({ id, ...project });
+  res.status(201).json({ id, ...stripPassword(project) });
+});
+
+app.post("/api/projects/:id/verify", (req, res) => {
+  const db = readDB();
+  const p = db.projects[req.params.id];
+  if (!p) return res.status(404).json({ error: "Proyecto no encontrado" });
+  if (p.password && p.password !== req.body.password) return res.status(403).json({ error: "Clave incorrecta" });
+  res.json({ id: req.params.id, ...stripPassword(p) });
 });
 
 app.get("/api/projects/:id", (req, res) => {
   const db = readDB();
   const p = db.projects[req.params.id];
   if (!p) return res.status(404).json({ error: "Proyecto no encontrado" });
-  res.json({ id: req.params.id, ...p });
+  res.json({ id: req.params.id, ...stripPassword(p) });
 });
 
 app.put("/api/projects/:id", (req, res) => {
@@ -85,7 +101,7 @@ app.put("/api/projects/:id", (req, res) => {
   Object.assign(db.projects[req.params.id], req.body);
   if (req.body.columns) db.columns[req.params.id] = req.body.columns;
   writeDB(db);
-  res.json({ id: req.params.id, ...db.projects[req.params.id] });
+  res.json({ id: req.params.id, ...stripPassword(db.projects[req.params.id]) });
 });
 
 app.delete("/api/projects/:id", (req, res) => {
