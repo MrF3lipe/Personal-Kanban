@@ -55,33 +55,30 @@ Abre http://localhost:3000 en tu navegador.
 ### Frontend (GitHub Pages)
 
 1. Crea un repo en GitHub y sube el código
-2. Ve a Settings → Pages → Source: GitHub Actions
-3. Crea `.github/workflows/deploy.yml`:
+2. Ve a **Settings → Pages → Source**: "Deploy from a branch"
+3. Branch: `main`, folder: `/public`
+4. En `public/config.js`, cambia `BACKEND_URL` a la URL de tu backend hosteado
+5. Guarda y espera 1–2 minutos — tu frontend estará en `https://<user>.github.io/<repo>/`
 
-```yaml
-name: Deploy
-on: [push]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: mkdir -p public && cp -r public/* .
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-```
-
-### Backend (Render / Railway)
+### Backend (Render / Railway / Fly.io)
 
 El backend necesita Node.js. Despliega `server.js` en:
 
-- **[Render](https://render.com)** — servicio Web con `node server.js`
-- **[Railway](https://railway.app)** — comando `node server.js`
+- **[Render](https://render.com)** — New Web Service, start command: `node server.js`
+- **[Railway](https://railway.app)** — Start command: `node server.js`
 - **[Fly.io](https://fly.io)** — `fly launch` con `cmd = "node server.js"`
 
-Configura `public/config.js` apuntando al backend desplegado.
+**Importante:** El backend necesita almacenamiento persistente (el archivo `data/db.json`). Render y Railway usan discs efímeros — considera usar una base de datos externa o un volume persistente si tus datos son críticos.
+
+### Después de desplegar
+
+Edita `public/config.js` en GitHub:
+
+```js
+const BACKEND_URL = "https://tu-backend.onrender.com"; // ← URL de tu backend
+```
+
+El frontend cargará Socket.IO desde CDN y se conectará a tu backend automáticamente.
 
 ## 🗂️ Estructura
 

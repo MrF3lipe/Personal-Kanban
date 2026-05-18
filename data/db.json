@@ -772,12 +772,12 @@
           "ux"
         ],
         "deadline": null,
-        "assignee": null,
+        "assignee": "",
         "createdBy": "Admin",
-        "lastModifiedBy": "Admin",
+        "lastModifiedBy": "Felipe",
         "order": 23,
         "createdAt": "2026-05-17T12:53:00.000Z",
-        "updatedAt": "2026-05-17T12:53:00.000Z"
+        "updatedAt": "2026-05-18T17:24:29.869Z"
       },
       {
         "id": "v26",
@@ -940,24 +940,6 @@
         "order": 33,
         "createdAt": "2026-05-17T13:03:00.000Z",
         "updatedAt": "2026-05-17T13:03:00.000Z"
-      },
-      {
-        "id": "v35",
-        "projectId": "v2",
-        "title": "Importar de Trello/Notion/Jira",
-        "description": "Migrar datos desde otras herramientas",
-        "status": "planned",
-        "priority": "p3",
-        "tags": [
-          "integraciones"
-        ],
-        "deadline": null,
-        "assignee": null,
-        "createdBy": "Admin",
-        "lastModifiedBy": "Felipe",
-        "order": 34,
-        "createdAt": "2026-05-17T13:04:00.000Z",
-        "updatedAt": "2026-05-18T13:57:26.906Z"
       },
       {
         "id": "v36",
@@ -1229,6 +1211,21 @@
         "order": 49,
         "createdAt": "2026-05-17T13:19:00.000Z",
         "updatedAt": "2026-05-17T13:19:00.000Z"
+      },
+      {
+        "id": "db3c015d",
+        "projectId": "v2",
+        "title": "asd",
+        "description": "asd",
+        "status": "planned",
+        "priority": "p3",
+        "tags": [],
+        "deadline": null,
+        "assignee": "Felipe",
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-05-18T17:24:14.015Z",
+        "updatedAt": "2026-05-18T17:32:07.139Z"
       }
     ]
   },
@@ -1237,7 +1234,66 @@
   },
   "checklists": {},
   "activity": {
-    "v2": [],
+    "v2": [
+      {
+        "type": "edit",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:32:07.139Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "v24",
+        "taskTitle": "Vista calendario",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:29.869Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:26.715Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:24.299Z"
+      },
+      {
+        "type": "move",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "from": "backlog",
+        "to": "planned",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:20.637Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:18.632Z"
+      },
+      {
+        "type": "create",
+        "taskId": "db3c015d",
+        "taskTitle": "asd",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:14.015Z"
+      },
+      {
+        "type": "edit",
+        "taskId": "v24",
+        "taskTitle": "Vista calendario",
+        "user": "Felipe",
+        "timestamp": "2026-05-18T17:24:09.598Z"
+      }
+    ],
     "demo": [
       {
         "type": "edit",

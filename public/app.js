@@ -868,6 +868,7 @@ function saveTaskSilent(extra) {
 }
 
 function closeTaskModal() {
+  clearTimeout(autoSaveTimer);
   const overlay = document.getElementById("modal-overlay");
   if (overlay) overlay.classList.add("hidden");
   editingTaskId = null;
