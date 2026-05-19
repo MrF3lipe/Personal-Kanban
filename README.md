@@ -56,8 +56,8 @@ Abre http://localhost:3000 en tu navegador.
 
 1. Crea un repo en GitHub y sube el código
 2. Ve a **Settings → Pages → Source**: "Deploy from a branch"
-3. Branch: `main`, folder: `/public`
-4. En `public/config.js`, cambia `BACKEND_URL` a la URL de tu backend hosteado
+3. Branch: `main`, folder: `/` (root)
+4. En `config.js`, cambia `BACKEND_URL` a la URL de tu backend hosteado
 5. Guarda y espera 1–2 minutos — tu frontend estará en `https://<user>.github.io/<repo>/`
 
 ### Backend (Render / Railway / Fly.io)
@@ -72,7 +72,7 @@ El backend necesita Node.js. Despliega `server.js` en:
 
 ### Después de desplegar
 
-Edita `public/config.js` en GitHub:
+Edita `config.js` en GitHub:
 
 ```js
 const BACKEND_URL = "https://tu-backend.onrender.com"; // ← URL de tu backend
@@ -88,11 +88,10 @@ kanban/
 ├── package.json
 ├── data/
 │   └── db.json            # Base de datos (JSON)
-├── public/
-│   ├── index.html         # SPA con templates
-│   ├── style.css          # Tema oscuro/claro
-│   ├── app.js             # Lógica frontend
-│   └── config.js          # BACKEND_URL (para GitHub Pages)
+├── index.html             # SPA con templates
+├── style.css              # Tema oscuro/claro
+├── app.js                 # Lógica frontend
+├── config.js              # BACKEND_URL (para GitHub Pages)
 └── README.md
 ```
 
