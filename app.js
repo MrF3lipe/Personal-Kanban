@@ -3,7 +3,6 @@
    ============================================================ */
 
 // --- State ---
-const socket = io(BACKEND_URL);
 let currentUser = localStorage.getItem("kanban_user") || "";
 let theme = localStorage.getItem("kanban_theme") || "dark";
 let projects = [];
@@ -19,10 +18,62 @@ let activeFilters = { priority: "", assignee: "", tag: "" };
 let viewMode = "board"; // board | list
 let usersMap = {}; // userId -> username cache
 
+// --- Data layer (localStorage) ---
+function genId() { return Math.random().toString(36).substring(2, 10) + Date.now().toString(36); }
+function now() { return new Date().toISOString(); }
+function readData() {
+  try { return JSON.parse(localStorage.getItem("kanban_data") || "{}"); } catch { return {}; }
+}
+function writeData(data) { localStorage.setItem("kanban_data", JSON.stringify(data)); }
+function ensureData(pid) {
+  const d = readData();
+  d.projects = d.projects || {};
+  d.tasks = d.tasks || {};
+  d.comments = d.comments || {};
+  d.checklists = d.checklists || {};
+  d.reactions = d.reactions || {};
+  d.activity = d.activity || {};
+  if (pid) { d.tasks[pid] = d.tasks[pid] || []; d.comments[pid] = d.comments[pid] || {}; d.checklists[pid] = d.checklists[pid] || {}; d.reactions[pid] = d.reactions[pid] || {}; d.activity[pid] = d.activity[pid] || []; }
+  return d;
+}
+
+function seedDemoData() {
+  if (localStorage.getItem("kanban_data")) return;
+  // Auto-join demo project
+  const joined = getJoined();
+  if (!joined.demo1) { joined.demo1 = ""; saveJoined(joined); }
+  const tasks = [
+    { id: "t1", projectId: "demo1", title: "Diseñar landing page", description: "Crear prototipo en Figma", status: "completed", priority: "p1", tags: ["diseño"], deadline: null, assignee: "Ana", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-01T10:00:00Z", updatedAt: "2026-05-01T10:00:00Z" },
+    { id: "t2", projectId: "demo1", title: "Implementar navbar responsive", description: "", status: "in-progress", priority: "p1", tags: ["frontend"], deadline: "2026-05-20T00:00:00Z", assignee: "Carlos", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-02T10:00:00Z", updatedAt: "2026-05-02T10:00:00Z" },
+    { id: "t3", projectId: "demo1", title: "Configurar CI/CD", description: "GitHub Actions para deploy automático", status: "in-review", priority: "p2", tags: ["devops"], deadline: null, assignee: "", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-03T10:00:00Z", updatedAt: "2026-05-03T10:00:00Z" },
+    { id: "t4", projectId: "demo1", title: "Escribir tests unitarios", description: "Cubrir módulo de autenticación", status: "pending", priority: "p2", tags: ["testing"], deadline: "2026-05-25T00:00:00Z", assignee: "Ana", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-04T10:00:00Z", updatedAt: "2026-05-04T10:00:00Z" },
+    { id: "t5", projectId: "demo1", title: "Optimizar imágenes", description: "WebP + lazy loading", status: "pending", priority: "p3", tags: ["rendimiento"], deadline: null, assignee: "", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-05T10:00:00Z", updatedAt: "2026-05-05T10:00:00Z" },
+    { id: "t6", projectId: "demo1", title: "Bug: login no funciona en Safari", description: "Error de cookies third-party", status: "pending", priority: "p0", tags: ["bug","urgente"], deadline: "2026-05-18T00:00:00Z", assignee: "Carlos", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-06T10:00:00Z", updatedAt: "2026-05-06T10:00:00Z" },
+  ];
+  const d = {
+    projects: {
+      demo1: {
+        id: "demo1", name: "Demo Kanban", description: "Proyecto de demostración", password: "",
+        columns: ["pending","in-progress","in-review","completed"],
+        columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
+        columnColors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
+        wipLimits: {}, createdBy: "Demo",
+      },
+    },
+    tasks: { demo1: tasks },
+    comments: {},
+    checklists: {},
+    reactions: {},
+    activity: {},
+  };
+  writeData(d);
+}
+
 const COLORS = ["#58a6ff","#3fb950","#d29922","#bc8cff","#db61a2","#39d2c0","#f85149","#e6edf3"];
 
 // --- Init ---
 document.addEventListener("DOMContentLoaded", () => {
+  seedDemoData();
   document.documentElement.setAttribute("data-theme", theme);
   initLogin();
   initRouting();
@@ -39,9 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
-    if (currentProjectId) {
-      socket.emit("leave:project", { projectId: currentProjectId });
-    }
     localStorage.removeItem("kanban_user");
     currentUser = "";
     document.getElementById("app").classList.add("hidden");
@@ -91,19 +139,14 @@ function navigate(hash) {
 }
 
 // --- Projects ---
-async function loadProjects() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/projects`);
-    projects = await res.json();
-    renderProjects();
-  } catch (e) {
-    console.error("Error loading projects", e);
-  }
+function loadProjects() {
+  const d = readData();
+  projects = Object.values(d.projects || {});
+  renderProjects();
 }
 
 function showProjectsView() {
   if (currentProjectId) {
-    socket.emit("leave:project", { projectId: currentProjectId });
     currentProjectId = null;
   }
   document.getElementById("backBtn").classList.add("hidden");
@@ -175,21 +218,18 @@ function renderProjects() {
       });
       joinedList.appendChild(div);
     } else {
-      div.addEventListener("click", async (e) => {
+      div.addEventListener("click", (e) => {
         if (e.target.closest(".project-delete")) return;
-        const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
-        if (pw === null) return;
-        const verify = await fetch(`${BACKEND_URL}/api/projects/${p.id}/verify`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: pw }),
-        });
-        if (verify.ok) {
-          joined[p.id] = pw;
-          saveJoined(joined);
-          navigate(`/project/${p.id}`);
-        } else {
-          alert("Clave incorrecta");
+        const d = readData();
+        const proj = d.projects[p.id];
+        if (proj && proj.password && proj.password !== "") {
+          const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
+          if (pw === null) return;
+          if (pw !== proj.password) { alert("Clave incorrecta"); return; }
         }
+        joined[p.id] = "";
+        saveJoined(joined);
+        navigate(`/project/${p.id}`);
       });
       list.appendChild(div);
     }
@@ -199,14 +239,16 @@ function renderProjects() {
       e.stopImmediatePropagation();
       const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
       if (!ok) return;
-      try {
-        await fetch(`${BACKEND_URL}/api/projects/${p.id}`, { method: "DELETE" });
-        delete joined[p.id];
-        saveJoined(joined);
-        loadProjects();
-      } catch (err) {
-        alert("Error al eliminar: " + err.message);
-      }
+      const d = readData();
+      delete d.projects[p.id];
+      delete d.tasks[p.id];
+      delete d.comments[p.id];
+      delete d.checklists[p.id];
+      delete d.reactions[p.id];
+      writeData(d);
+      delete joined[p.id];
+      saveJoined(joined);
+      loadProjects();
     });
   });
 
@@ -221,30 +263,30 @@ function renderProjects() {
     const name = prompt("Nombre del proyecto:");
     if (!name || !name.trim()) return;
     const password = prompt("Clave del proyecto (dejar vacío para público):") || "";
-    fetch(`${BACKEND_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), password, createdBy: currentUser }),
-    }).then(async (r) => {
-      if (r.ok) {
-        const proj = await r.json();
-        joined[proj.id] = password;
-        saveJoined(joined);
-        loadProjects();
-      }
-    });
+    const d = ensureData();
+    const id = genId();
+    d.projects[id] = {
+      id, name: name.trim(), password,
+      columns: ["pending","in-progress","in-review","completed"],
+      columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
+      columnColors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
+      wipLimits: {},
+      createdBy: currentUser,
+    };
+    writeData(d);
+    joined[id] = password;
+    saveJoined(joined);
+    loadProjects();
   });
 
-  document.getElementById("joinForm").addEventListener("submit", async (e) => {
+  document.getElementById("joinForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const id = document.getElementById("joinId").value.trim();
     const password = document.getElementById("joinPassword").value;
     const errEl = document.getElementById("joinError");
-    const verify = await fetch(`${BACKEND_URL}/api/projects/${id}/verify`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (verify.ok) {
+    const d = readData();
+    const proj = d.projects[id];
+    if (proj && (!proj.password || proj.password === password)) {
       joined[id] = password;
       saveJoined(joined);
       errEl.classList.add("hidden");
@@ -265,22 +307,22 @@ function renderProjects() {
       try {
         const data = JSON.parse(await file.text());
         const projectsData = Array.isArray(data) ? data : [data];
+        const d = ensureData();
         for (const p of projectsData) {
-          await fetch(`${BACKEND_URL}/api/projects`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: p.name || p.project?.name || "Importado",
-              description: p.description || p.project?.description || "",
-              password: p.password || "",
-              columns: p.columns || p.project?.columns,
-              columnLabels: p.columnLabels || p.project?.columnLabels,
-              wipLimits: p.wipLimits || p.project?.wipLimits,
-              id: p.id,
-              createdBy: currentUser,
-            }),
-          });
+          const id = p.id || genId();
+          d.projects[id] = {
+            id,
+            name: p.name || p.project?.name || "Importado",
+            description: p.description || p.project?.description || "",
+            password: p.password || "",
+            columns: p.columns || p.project?.columns || ["pending","in-progress","in-review","completed"],
+            columnLabels: p.columnLabels || p.project?.columnLabels || {},
+            columnColors: p.columnColors || p.project?.columnColors || {},
+            wipLimits: p.wipLimits || p.project?.wipLimits || {},
+            createdBy: currentUser,
+          };
         }
+        writeData(d);
         alert(`${projectsData.length} proyecto(s) importado(s)`);
         loadProjects();
       } catch (err) {
@@ -292,14 +334,14 @@ function renderProjects() {
 }
 
 // --- Project View ---
-async function openProject(pid) {
+function openProject(pid) {
   currentProjectId = pid;
   document.getElementById("backBtn").classList.remove("hidden");
   document.getElementById("toggleSearchBtn").classList.remove("hidden");
 
-  const res = await fetch(`${BACKEND_URL}/api/projects/${pid}`);
-  if (!res.ok) { navigate("/"); return; }
-  const project = await res.json();
+  const d = readData();
+  const project = d.projects[pid];
+  if (!project) { navigate("/"); return; }
   document.getElementById("topbarTitle").textContent = project.name;
 
   const joined = getJoined();
@@ -308,51 +350,11 @@ async function openProject(pid) {
     return;
   }
 
-  // Load tasks
-  const tRes = await fetch(`${BACKEND_URL}/api/projects/${pid}/tasks`);
-  tasks = await tRes.json();
-
-  // Load activity
-  const aRes = await fetch(`${BACKEND_URL}/api/projects/${pid}/activity`);
-  activity = await aRes.json();
+  tasks = d.tasks[pid] || [];
+  activity = d.activity[pid] || [];
+  onlineUsers = [{ username: currentUser, online: true }];
 
   renderKanban(project);
-  setupSocket(pid);
-}
-
-function setupSocket(pid) {
-  socket.emit("join:project", { projectId: pid, username: currentUser });
-
-  socket.off("tasks:updated");
-  socket.on("tasks:updated", (data) => {
-    tasks = data;
-    renderBoard();
-    renderListView();
-  });
-
-  socket.off("users:updated");
-  socket.on("users:updated", (users) => {
-    onlineUsers = users;
-    renderUsers();
-  });
-
-  socket.off("comments:updated");
-  socket.on("comments:updated", ({ taskId, comments: cmts }) => {
-    comments[taskId] = cmts;
-    if (editingTaskId === taskId) renderComments(taskId);
-  });
-
-  socket.off("checklist:updated");
-  socket.on("checklist:updated", ({ taskId, checklist: cl }) => {
-    checklists[taskId] = cl;
-    if (editingTaskId === taskId) renderChecklist(taskId);
-  });
-
-  socket.off("reactions:updated");
-  socket.on("reactions:updated", ({ taskId, reactions: r }) => {
-    reactions[taskId] = r;
-    renderReactions(taskId);
-  });
 }
 
 function renderUsers() {
@@ -377,7 +379,7 @@ function renderUsers() {
     toggleBtn.title = "Cambiar estado";
     toggleBtn.innerHTML = onlineUsers.find((u) => u.username === currentUser)?.online ? "●" : "○";
     toggleBtn.addEventListener("click", () => {
-      socket.emit("user:toggle", { projectId: currentProjectId });
+      // Offline: no-op
     });
     container.appendChild(toggleBtn);
   }
@@ -497,7 +499,15 @@ function renderBoard() {
       const tid = e.dataTransfer.getData("text/plain");
       const task = tasks.find((t) => t.id === tid);
       if (task && task.status !== colId) {
-        socket.emit("task:move", { id: tid, newStatus: colId, username: currentUser, projectId: currentProjectId });
+        const d = ensureData(currentProjectId);
+        const idx = d.tasks[currentProjectId].findIndex((t) => t.id === tid);
+        if (idx !== -1) {
+          d.tasks[currentProjectId][idx].status = colId;
+          writeData(d);
+        }
+        task.status = colId;
+        renderBoard();
+        renderListView();
       }
     });
 
@@ -709,12 +719,16 @@ function createTaskModal() {
     if (!editingTaskId) return;
     const ok = await showConfirm("Eliminar tarea", "¿Eliminar esta tarea para siempre?", "Eliminar");
     if (!ok) return;
-    try {
-      await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, { method: "DELETE" });
-      closeTaskModal();
-    } catch (err) {
-      alert("Error al eliminar: " + err.message);
-    }
+    const d = ensureData(currentProjectId);
+    d.tasks[currentProjectId] = d.tasks[currentProjectId].filter((t) => t.id !== editingTaskId);
+    delete d.comments[currentProjectId][editingTaskId];
+    delete d.checklists[currentProjectId][editingTaskId];
+    delete d.reactions[currentProjectId][editingTaskId];
+    writeData(d);
+    tasks = d.tasks[currentProjectId];
+    closeTaskModal();
+    renderBoard();
+    renderListView();
   });
 
   // Tag add
@@ -741,11 +755,12 @@ function createTaskModal() {
     const input = document.getElementById("commentInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, user: currentUser }),
-      });
+      const d = ensureData(currentProjectId);
+      d.comments[currentProjectId][editingTaskId] = d.comments[currentProjectId][editingTaskId] || [];
+      d.comments[currentProjectId][editingTaskId].push({ id: genId(), text, user: currentUser, createdAt: now() });
+      writeData(d);
+      comments[editingTaskId] = d.comments[currentProjectId][editingTaskId];
+      renderComments(editingTaskId);
       input.value = "";
     }
   });
@@ -756,11 +771,12 @@ function createTaskModal() {
     const input = document.getElementById("checklistInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}/checklist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+      const d = ensureData(currentProjectId);
+      d.checklists[currentProjectId][editingTaskId] = d.checklists[currentProjectId][editingTaskId] || [];
+      d.checklists[currentProjectId][editingTaskId].push({ id: genId(), text, done: false });
+      writeData(d);
+      checklists[editingTaskId] = d.checklists[currentProjectId][editingTaskId];
+      renderChecklist(editingTaskId);
       input.value = "";
     }
   });
@@ -810,21 +826,27 @@ function saveTask() {
     lastModifiedBy: currentUser,
   };
 
+  const d = ensureData(currentProjectId);
   if (editingTaskId) {
-    fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
+    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
+    writeData(d);
+    tasks = d.tasks[currentProjectId];
     closeTaskModal();
+    renderBoard();
+    renderListView();
   } else {
     body.createdBy = currentUser;
-    fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    body.id = genId();
+    body.projectId = currentProjectId;
+    body.createdAt = now();
+    body.updatedAt = now();
+    d.tasks[currentProjectId].push(body);
+    writeData(d);
+    tasks = d.tasks[currentProjectId];
     closeTaskModal();
+    renderBoard();
+    renderListView();
   }
 }
 
@@ -844,11 +866,11 @@ function autoSaveTask() {
       deadline: document.getElementById("modalDeadline").value || null,
       lastModifiedBy: currentUser,
     };
-    fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const d = ensureData(currentProjectId);
+    const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
+    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
+    writeData(d);
+    tasks = d.tasks[currentProjectId];
   }, 800);
 }
 
@@ -860,11 +882,11 @@ function saveTaskSilent(extra) {
     lastModifiedBy: currentUser,
     ...extra,
   };
-  fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${editingTaskId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const d = ensureData(currentProjectId);
+  const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
+  if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
+  writeData(d);
+  tasks = d.tasks[currentProjectId];
 }
 
 function closeTaskModal() {
@@ -875,12 +897,10 @@ function closeTaskModal() {
 }
 
 // --- Comments ---
-async function loadComments(taskId) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/comments`);
-    comments[taskId] = await res.json();
-    renderComments(taskId);
-  } catch (e) {}
+function loadComments(taskId) {
+  const d = readData();
+  comments[taskId] = d.comments[currentProjectId]?.[taskId] || [];
+  renderComments(taskId);
 }
 
 function renderComments(taskId) {
@@ -899,12 +919,10 @@ function renderComments(taskId) {
 }
 
 // --- Checklists ---
-async function loadChecklist(taskId) {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/checklist`);
-    checklists[taskId] = await res.json();
-    renderChecklist(taskId);
-  } catch (e) {}
+function loadChecklist(taskId) {
+  const d = readData();
+  checklists[taskId] = d.checklists[currentProjectId]?.[taskId] || [];
+  renderChecklist(taskId);
 }
 
 function renderChecklist(taskId) {
@@ -922,30 +940,33 @@ function renderChecklist(taskId) {
     : "";
   container.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     cb.addEventListener("change", () => {
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/checklist/${cb.dataset.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ done: cb.checked }),
-      });
+      const d = ensureData(currentProjectId);
+      const items = d.checklists[currentProjectId]?.[taskId] || [];
+      const item = items.find((i) => i.id === cb.dataset.id);
+      if (item) item.done = cb.checked;
+      writeData(d);
+      checklists[taskId] = items;
     });
   });
   container.querySelectorAll(".check-del").forEach((btn) => {
     btn.addEventListener("click", () => {
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/checklist/${btn.dataset.id}`, { method: "DELETE" });
+      const d = ensureData(currentProjectId);
+      const items = (d.checklists[currentProjectId]?.[taskId] || []).filter((i) => i.id !== btn.dataset.id);
+      d.checklists[currentProjectId][taskId] = items;
+      writeData(d);
+      checklists[taskId] = items;
+      renderChecklist(taskId);
     });
   });
 }
 
 // --- Reactions ---
-async function renderReactionsForCard(taskId) {
+function renderReactionsForCard(taskId) {
   const container = document.getElementById(`reactions-${taskId}`);
   if (!container) return;
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}`);
-    const task = await res.json();
-    // Get reactions from reaction endpoint
-    const rRes = await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/reactions`, { method: "POST" });
-  } catch (e) {}
+  const d = readData();
+  reactions[taskId] = d.reactions[currentProjectId]?.[taskId] || {};
+  renderReactions(taskId);
 }
 
 function renderReactions(taskId) {
@@ -964,11 +985,17 @@ function renderReactions(taskId) {
     btn.addEventListener("click", () => {
       const emoji = btn.dataset.emoji;
       const taskId = btn.dataset.task;
-      fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/tasks/${taskId}/reactions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emoji, user: currentUser }),
-      });
+      const d = ensureData(currentProjectId);
+      d.reactions[currentProjectId][taskId] = d.reactions[currentProjectId][taskId] || {};
+      const users = d.reactions[currentProjectId][taskId][emoji] || [];
+      const idx = users.indexOf(currentUser);
+      if (idx === -1) users.push(currentUser);
+      else users.splice(idx, 1);
+      if (users.length === 0) delete d.reactions[currentProjectId][taskId][emoji];
+      else d.reactions[currentProjectId][taskId][emoji] = users;
+      writeData(d);
+      reactions[taskId] = d.reactions[currentProjectId][taskId];
+      renderReactions(taskId);
     });
   });
 }
@@ -1044,30 +1071,33 @@ function openColumnsModal(project) {
         if (wip > 0) newWip[key] = wip;
       }
     });
-    fetch(`${BACKEND_URL}/api/projects/${currentProjectId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip }),
-    }).then(() => {
-      overlay.remove();
-      openProject(currentProjectId);
-    });
+    const d = readData();
+    if (d.projects[currentProjectId]) {
+      Object.assign(d.projects[currentProjectId], { columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip });
+      writeData(d);
+    }
+    overlay.remove();
+    openProject(currentProjectId);
   });
 }
 
 // --- Export ---
-async function exportProject() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/projects/${currentProjectId}/export`);
-    const data = await res.json();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `kanban-${currentProjectId}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {}
+function exportProject() {
+  const d = readData();
+  const data = {
+    project: d.projects[currentProjectId],
+    tasks: d.tasks[currentProjectId] || [],
+    comments: d.comments[currentProjectId] || {},
+    checklists: d.checklists[currentProjectId] || {},
+    reactions: d.reactions[currentProjectId] || {},
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kanban-${currentProjectId}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // --- Search ---
@@ -1176,7 +1206,6 @@ document.addEventListener("click", (e) => {
 
 // --- Back button ---
 document.getElementById("backBtn").addEventListener("click", () => {
-  socket.emit("leave:project", { projectId: currentProjectId });
   currentProjectId = null;
   navigate("/");
 });

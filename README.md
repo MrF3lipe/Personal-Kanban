@@ -52,46 +52,37 @@ Abre http://localhost:3000 en tu navegador.
 
 ## ☁️ Desplegar
 
-### Frontend (GitHub Pages)
+### GitHub Pages (sin backend)
 
 1. Crea un repo en GitHub y sube el código
 2. Ve a **Settings → Pages → Source**: "Deploy from a branch"
 3. Branch: `main`, folder: `/` (root)
-4. En `config.js`, cambia `BACKEND_URL` a la URL de tu backend hosteado
-5. Guarda y espera 1–2 minutos — tu frontend estará en `https://<user>.github.io/<repo>/`
+4. Listo — la app funciona 100% offline con localStorage en `https://<user>.github.io/<repo>/`
 
-### Backend (Render / Railway / Fly.io)
+No necesitas backend. Los datos se guardan localmente en el navegador.
 
-El backend necesita Node.js. Despliega `server.js` en:
+### Inicio rápido (local)
 
-- **[Render](https://render.com)** — New Web Service, start command: `node server.js`
-- **[Railway](https://railway.app)** — Start command: `node server.js`
-- **[Fly.io](https://fly.io)** — `fly launch` con `cmd = "node server.js"`
-
-**Importante:** El backend necesita almacenamiento persistente (el archivo `data/db.json`). Render y Railway usan discs efímeros — considera usar una base de datos externa o un volume persistente si tus datos son críticos.
-
-### Después de desplegar
-
-Edita `config.js` en GitHub:
-
-```js
-const BACKEND_URL = "https://tu-backend.onrender.com"; // ← URL de tu backend
+```bash
+cd kanban
+npm install
+node server.js
 ```
 
-El frontend cargará Socket.IO desde CDN y se conectará a tu backend automáticamente.
+Abre http://localhost:3000 (o usa el archivo `index.html` directamente).
 
 ## 🗂️ Estructura
 
 ```
 kanban/
-├── server.js              # Backend Express + Socket.IO
+├── server.js              # Backend Express + Socket.IO (opcional, sin backend usa localStorage)
 ├── package.json
 ├── data/
-│   └── db.json            # Base de datos (JSON)
+│   └── db.json            # Datos de ejemplo (solo para backend)
 ├── index.html             # SPA con templates
 ├── style.css              # Tema oscuro/claro
-├── app.js                 # Lógica frontend
-├── config.js              # BACKEND_URL (para GitHub Pages)
+├── app.js                 # Lógica frontend (todo en localStorage)
+├── config.js              # Vacío (sin backend)
 └── README.md
 ```
 
