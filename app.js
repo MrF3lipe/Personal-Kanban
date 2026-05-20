@@ -1,6 +1,11 @@
 /* ============================================================
-   Kanban v2 — Frontend App
+   Kanban v2 — Frontend App (Firebase Realtime)
    ============================================================ */
+
+// --- Firebase ---
+firebase.initializeApp(firebaseConfig);
+const fbDb = firebase.database();
+const fbAuth = firebase.auth();
 
 // --- State ---
 let currentUser = localStorage.getItem("kanban_user") || "";
@@ -15,77 +20,100 @@ let currentProjectId = null;
 let editingTaskId = null;
 let onlineUsers = [];
 let activeFilters = { priority: "", assignee: "", tag: "" };
-let viewMode = "board"; // board | list
-let usersMap = {}; // userId -> username cache
+let viewMode = "board";
+let usersMap = {};
 
-// --- Data layer (localStorage) ---
-function genId() { return Math.random().toString(36).substring(2, 10) + Date.now().toString(36); }
+// --- Firebase listeners refs ---
+let fbListeners = { tasks: null, comments: {}, checklists: {}, reactions: {}, presence: null };
+
+function detachListeners() {
+  if (fbListeners.tasks) { fbListeners.tasks.off(); fbListeners.tasks = null; }
+  Object.values(fbListeners.comments).forEach(r => r.off()); fbListeners.comments = {};
+  Object.values(fbListeners.checklists).forEach(r => r.off()); fbListeners.checklists = {};
+  Object.values(fbListeners.reactions).forEach(r => r.off()); fbListeners.reactions = {};
+  if (fbListeners.presence) { fbListeners.presence.off(); fbListeners.presence = null; }
+}
+
+function listenTasks(pid) {
+  if (fbListeners.tasks) fbListeners.tasks.off();
+  fbListeners.tasks = fbDb.ref(`tasks/${pid}`);
+  fbListeners.tasks.on("value", snap => {
+    const data = snap.val();
+    tasks = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
+    renderBoard();
+    renderListView();
+  });
+}
+
+function listenComments(taskId) {
+  if (fbListeners.comments[taskId]) fbListeners.comments[taskId].off();
+  fbListeners.comments[taskId] = fbDb.ref(`comments/${currentProjectId}/${taskId}`);
+  fbListeners.comments[taskId].on("value", snap => {
+    const data = snap.val();
+    comments[taskId] = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
+    if (editingTaskId === taskId) renderComments(taskId);
+  });
+}
+
+function listenChecklist(taskId) {
+  if (fbListeners.checklists[taskId]) fbListeners.checklists[taskId].off();
+  fbListeners.checklists[taskId] = fbDb.ref(`checklists/${currentProjectId}/${taskId}`);
+  fbListeners.checklists[taskId].on("value", snap => {
+    const data = snap.val();
+    checklists[taskId] = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
+    if (editingTaskId === taskId) renderChecklist(taskId);
+  });
+}
+
+function listenReactions(taskId) {
+  if (fbListeners.reactions[taskId]) fbListeners.reactions[taskId].off();
+  fbListeners.reactions[taskId] = fbDb.ref(`reactions/${currentProjectId}/${taskId}`);
+  fbListeners.reactions[taskId].on("value", snap => {
+    reactions[taskId] = snap.val() || {};
+    renderReactions(taskId);
+  });
+}
+
+function listenPresence(pid) {
+  if (fbListeners.presence) fbListeners.presence.off();
+  fbListeners.presence = fbDb.ref(`presence/${pid}`);
+  fbListeners.presence.on("value", snap => {
+    const data = snap.val() || {};
+    onlineUsers = Object.keys(data).map(u => ({ username: u, online: true }));
+    renderUsers();
+  });
+}
+
+// --- Auth ---
+function ensureSignedIn() {
+  return new Promise(resolve => {
+    if (fbAuth.currentUser) return resolve(fbAuth.currentUser);
+    const unsub = fbAuth.onAuthStateChanged(user => {
+      if (unsub) unsub();
+      resolve(user);
+    });
+  });
+}
+
+// --- Helpers ---
 function now() { return new Date().toISOString(); }
-function readData() {
-  try { return JSON.parse(localStorage.getItem("kanban_data") || "{}"); } catch { return {}; }
-}
-function writeData(data) { localStorage.setItem("kanban_data", JSON.stringify(data)); }
-function ensureData(pid) {
-  const d = readData();
-  d.projects = d.projects || {};
-  d.tasks = d.tasks || {};
-  d.comments = d.comments || {};
-  d.checklists = d.checklists || {};
-  d.reactions = d.reactions || {};
-  d.activity = d.activity || {};
-  if (pid) { d.tasks[pid] = d.tasks[pid] || []; d.comments[pid] = d.comments[pid] || {}; d.checklists[pid] = d.checklists[pid] || {}; d.reactions[pid] = d.reactions[pid] || {}; d.activity[pid] = d.activity[pid] || []; }
-  return d;
-}
 
 function logActivity(pid, type, taskId, taskTitle, extra) {
-  const d = ensureData(pid);
-  d.activity[pid].unshift({ type, taskId, taskTitle, user: currentUser, timestamp: now(), ...extra });
-  writeData(d);
-  if (pid === currentProjectId) activity = d.activity[pid];
-}
-
-function seedDemoData() {
-  if (localStorage.getItem("kanban_data")) return;
-  // Auto-join demo project
-  const joined = getJoined();
-  if (!joined.demo1) { joined.demo1 = ""; saveJoined(joined); }
-  const tasks = [
-    { id: "t1", projectId: "demo1", title: "Diseñar landing page", description: "Crear prototipo en Figma", status: "completed", priority: "p1", tags: ["diseño"], deadline: null, assignee: "Ana", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-01T10:00:00Z", updatedAt: "2026-05-01T10:00:00Z" },
-    { id: "t2", projectId: "demo1", title: "Implementar navbar responsive", description: "", status: "in-progress", priority: "p1", tags: ["frontend"], deadline: "2026-05-20T00:00:00Z", assignee: "Carlos", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-02T10:00:00Z", updatedAt: "2026-05-02T10:00:00Z" },
-    { id: "t3", projectId: "demo1", title: "Configurar CI/CD", description: "GitHub Actions para deploy automático", status: "in-review", priority: "p2", tags: ["devops"], deadline: null, assignee: "", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-03T10:00:00Z", updatedAt: "2026-05-03T10:00:00Z" },
-    { id: "t4", projectId: "demo1", title: "Escribir tests unitarios", description: "Cubrir módulo de autenticación", status: "pending", priority: "p2", tags: ["testing"], deadline: "2026-05-25T00:00:00Z", assignee: "Ana", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-04T10:00:00Z", updatedAt: "2026-05-04T10:00:00Z" },
-    { id: "t5", projectId: "demo1", title: "Optimizar imágenes", description: "WebP + lazy loading", status: "pending", priority: "p3", tags: ["rendimiento"], deadline: null, assignee: "", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-05T10:00:00Z", updatedAt: "2026-05-05T10:00:00Z" },
-    { id: "t6", projectId: "demo1", title: "Bug: login no funciona en Safari", description: "Error de cookies third-party", status: "pending", priority: "p0", tags: ["bug","urgente"], deadline: "2026-05-18T00:00:00Z", assignee: "Carlos", createdBy: "Demo", lastModifiedBy: "Demo", createdAt: "2026-05-06T10:00:00Z", updatedAt: "2026-05-06T10:00:00Z" },
-  ];
-  const d = {
-    projects: {
-      demo1: {
-        id: "demo1", name: "Demo Kanban", description: "Proyecto de demostración", password: "",
-        columns: ["pending","in-progress","in-review","completed"],
-        columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
-        columnColors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
-        wipLimits: {}, createdBy: "Demo",
-      },
-    },
-    tasks: { demo1: tasks },
-    comments: {},
-    checklists: {},
-    reactions: {},
-    activity: {},
-  };
-  writeData(d);
+  const ref = fbDb.ref(`activity/${pid}`).push();
+  ref.set({ type, taskId, taskTitle, user: currentUser, timestamp: now(), ...extra });
 }
 
 const COLORS = ["#58a6ff","#3fb950","#d29922","#bc8cff","#db61a2","#39d2c0","#f85149","#e6edf3"];
 
 // --- Init ---
 document.addEventListener("DOMContentLoaded", () => {
-  seedDemoData();
   document.documentElement.setAttribute("data-theme", theme);
   initLogin();
   initRouting();
   initThemeToggle();
   initKeyboard();
+
+  fbAuth.signInAnonymously().catch(console.error);
 
   if (currentUser) {
     document.getElementById("app").classList.remove("hidden");
@@ -99,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
+    detachListeners();
     localStorage.removeItem("kanban_user");
     currentUser = "";
     document.getElementById("app").classList.add("hidden");
@@ -114,7 +143,7 @@ function showLogin() {
 }
 
 function initLogin() {
-  document.getElementById("loginForm").addEventListener("submit", (e) => {
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("loginInput").value.trim();
     if (name) {
@@ -123,6 +152,8 @@ function initLogin() {
       document.getElementById("userBadge").textContent = name;
       document.getElementById("loginScreen").classList.add("hidden");
       document.getElementById("app").classList.remove("hidden");
+      // Ensure anonymous auth is signed in
+      if (!fbAuth.currentUser) await fbAuth.signInAnonymously();
       loadProjects();
     }
   });
@@ -149,13 +180,17 @@ function navigate(hash) {
 
 // --- Projects ---
 function loadProjects() {
-  const d = readData();
-  projects = Object.values(d.projects || {});
-  renderProjects();
+  fbDb.ref("projects").once("value", snap => {
+    const data = snap.val() || {};
+    projects = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+    renderProjects();
+  });
 }
 
 function showProjectsView() {
+  detachListeners();
   if (currentProjectId) {
+    fbDb.ref(`presence/${currentProjectId}/${currentUser}`).remove();
     currentProjectId = null;
   }
   document.getElementById("backBtn").classList.add("hidden");
@@ -194,8 +229,6 @@ function renderProjects() {
 
   const joined = getJoined();
   const joinedIds = new Set(Object.keys(joined));
-  const allData = readData();
-  const tasksByProject = allData.tasks || {};
 
   const list = document.getElementById("projectsList");
   list.innerHTML = "";
@@ -212,7 +245,6 @@ function renderProjects() {
     div.querySelector(".project-name").textContent = p.name;
     div.querySelector(".project-desc").textContent = p.description || "Sin descripción";
     div.querySelector(".project-id-label code").textContent = p.id;
-    div.querySelector(".project-tasks-count").textContent = `${(tasksByProject[p.id] || []).length} tareas`;
 
     if (joinedIds.has(p.id) || p.createdBy === currentUser) {
       hasJoined = true;
@@ -230,16 +262,17 @@ function renderProjects() {
     } else {
       div.addEventListener("click", (e) => {
         if (e.target.closest(".project-delete")) return;
-        const d = readData();
-        const proj = d.projects[p.id];
-        if (proj && proj.password && proj.password !== "") {
-          const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
-          if (pw === null) return;
-          if (pw !== proj.password) { alert("Clave incorrecta"); return; }
-        }
-        joined[p.id] = "";
-        saveJoined(joined);
-        navigate(`/project/${p.id}`);
+        fbDb.ref(`projects/${p.id}`).once("value", snap => {
+          const proj = snap.val();
+          if (proj && proj.password && proj.password !== "") {
+            const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
+            if (pw === null) return;
+            if (pw !== proj.password) { alert("Clave incorrecta"); return; }
+          }
+          joined[p.id] = "";
+          saveJoined(joined);
+          navigate(`/project/${p.id}`);
+        });
       });
       list.appendChild(div);
     }
@@ -249,13 +282,15 @@ function renderProjects() {
       e.stopImmediatePropagation();
       const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
       if (!ok) return;
-      const d = readData();
-      delete d.projects[p.id];
-      delete d.tasks[p.id];
-      delete d.comments[p.id];
-      delete d.checklists[p.id];
-      delete d.reactions[p.id];
-      writeData(d);
+      const updates = {};
+      updates[`projects/${p.id}`] = null;
+      updates[`tasks/${p.id}`] = null;
+      updates[`comments/${p.id}`] = null;
+      updates[`checklists/${p.id}`] = null;
+      updates[`reactions/${p.id}`] = null;
+      updates[`activity/${p.id}`] = null;
+      updates[`presence/${p.id}`] = null;
+      await fbDb.ref().update(updates);
       delete joined[p.id];
       saveJoined(joined);
       loadProjects();
@@ -273,17 +308,16 @@ function renderProjects() {
     const name = prompt("Nombre del proyecto:");
     if (!name || !name.trim()) return;
     const password = prompt("Clave del proyecto (dejar vacío para público):") || "";
-    const d = ensureData();
-    const id = genId();
-    d.projects[id] = {
+    const ref = fbDb.ref("projects").push();
+    const id = ref.key;
+    ref.set({
       id, name: name.trim(), password,
       columns: ["pending","in-progress","in-review","completed"],
       columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
       columnColors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
       wipLimits: {},
       createdBy: currentUser,
-    };
-    writeData(d);
+    });
     joined[id] = password;
     saveJoined(joined);
     loadProjects();
@@ -294,17 +328,18 @@ function renderProjects() {
     const id = document.getElementById("joinId").value.trim();
     const password = document.getElementById("joinPassword").value;
     const errEl = document.getElementById("joinError");
-    const d = readData();
-    const proj = d.projects[id];
-    if (proj && (!proj.password || proj.password === password)) {
-      joined[id] = password;
-      saveJoined(joined);
-      errEl.classList.add("hidden");
-      navigate(`/project/${id}`);
-    } else {
-      errEl.textContent = "ID o clave incorrectos";
-      errEl.classList.remove("hidden");
-    }
+    fbDb.ref(`projects/${id}`).once("value", snap => {
+      const proj = snap.val();
+      if (proj && (!proj.password || proj.password === password)) {
+        joined[id] = password;
+        saveJoined(joined);
+        errEl.classList.add("hidden");
+        navigate(`/project/${id}`);
+      } else {
+        errEl.textContent = "ID o clave incorrectos";
+        errEl.classList.remove("hidden");
+      }
+    });
   });
 
   document.getElementById("importBtn").addEventListener("click", () => {
@@ -317,11 +352,11 @@ function renderProjects() {
       try {
         const data = JSON.parse(await file.text());
         const projectsData = Array.isArray(data) ? data : [data];
-        const d = ensureData();
         for (const item of projectsData) {
           const p = item.project || item;
-          const id = p.id || genId();
-          d.projects[id] = {
+          const ref = fbDb.ref("projects").push();
+          const id = ref.key;
+          ref.set({
             id,
             name: p.name || p.project?.name || "Importado",
             description: p.description || p.project?.description || "",
@@ -331,13 +366,12 @@ function renderProjects() {
             columnColors: p.columnColors || p.project?.columnColors || {},
             wipLimits: p.wipLimits || p.project?.wipLimits || {},
             createdBy: currentUser,
-          };
-          if (item.tasks) d.tasks[id] = item.tasks;
-          if (item.comments) d.comments[id] = item.comments;
-          if (item.checklists) d.checklists[id] = item.checklists;
-          if (item.reactions) d.reactions[id] = item.reactions;
+          });
+          if (item.tasks) fbDb.ref(`tasks/${id}`).set(item.tasks);
+          if (item.comments) fbDb.ref(`comments/${id}`).set(item.comments);
+          if (item.checklists) fbDb.ref(`checklists/${id}`).set(item.checklists);
+          if (item.reactions) fbDb.ref(`reactions/${id}`).set(item.reactions);
         }
-        writeData(d);
         alert(`${projectsData.length} proyecto(s) importado(s)`);
         loadProjects();
       } catch (err) {
@@ -354,26 +388,31 @@ function openProject(pid) {
   document.getElementById("backBtn").classList.remove("hidden");
   document.getElementById("toggleSearchBtn").classList.remove("hidden");
 
-  const d = readData();
-  const project = d.projects[pid];
-  if (!project) { showProjectsView(); return; }
-  document.getElementById("topbarTitle").textContent = project.name;
+  fbDb.ref(`projects/${pid}`).once("value", snap => {
+    const project = snap.val();
+    if (!project) { showProjectsView(); return; }
+    document.getElementById("topbarTitle").textContent = project.name;
 
-  const joined = getJoined();
-  if (!(pid in joined)) {
-    showProjectsView();
-    return;
-  }
+    const joined = getJoined();
+    if (!(pid in joined)) {
+      showProjectsView();
+      return;
+    }
 
-  tasks = d.tasks[pid] || [];
-  comments = {};
-  checklists = {};
-  reactions = {};
-  activity = d.activity[pid] || [];
-  onlineUsers = [{ username: currentUser, online: true }];
-  activeFilters = { priority: "", assignee: "", tag: "" };
+    comments = {};
+    checklists = {};
+    reactions = {};
+    activeFilters = { priority: "", assignee: "", tag: "" };
 
-  renderKanban(project);
+    listenTasks(pid);
+    listenPresence(pid);
+
+    // Set presence
+    fbDb.ref(`presence/${pid}/${currentUser}`).onDisconnect().remove();
+    fbDb.ref(`presence/${pid}/${currentUser}`).set({ online: true, lastSeen: Date.now() });
+
+    renderKanban(project);
+  });
 }
 
 function renderUsers() {
@@ -509,12 +548,7 @@ function renderBoard() {
       const task = tasks.find((t) => t.id === tid);
       if (task && task.status !== colId) {
         const oldStatus = task.status;
-        const d = ensureData(currentProjectId);
-        const idx = d.tasks[currentProjectId].findIndex((t) => t.id === tid);
-        if (idx !== -1) {
-          d.tasks[currentProjectId][idx].status = colId;
-          writeData(d);
-        }
+        fbDb.ref(`tasks/${currentProjectId}/${tid}`).update({ status: colId });
         task.status = colId;
         logActivity(currentProjectId, "move", tid, task.title, { from: oldStatus, to: colId });
         renderBoard();
@@ -728,18 +762,16 @@ function createTaskModal() {
     if (!editingTaskId) return;
     const ok = await showConfirm("Eliminar tarea", "¿Eliminar esta tarea para siempre?", "Eliminar");
     if (!ok) return;
-    const d = ensureData(currentProjectId);
-    const delTask = d.tasks[currentProjectId].find((t) => t.id === editingTaskId);
-    d.tasks[currentProjectId] = d.tasks[currentProjectId].filter((t) => t.id !== editingTaskId);
-    delete d.comments[currentProjectId][editingTaskId];
-    delete d.checklists[currentProjectId][editingTaskId];
-    delete d.reactions[currentProjectId][editingTaskId];
-    writeData(d);
-    tasks = d.tasks[currentProjectId];
-    if (delTask) logActivity(currentProjectId, "delete", editingTaskId, delTask.title);
+    const delTask = tasks.find((t) => t.id === editingTaskId);
+    const tid = editingTaskId;
+    const updates = {};
+    updates[`tasks/${currentProjectId}/${tid}`] = null;
+    updates[`comments/${currentProjectId}/${tid}`] = null;
+    updates[`checklists/${currentProjectId}/${tid}`] = null;
+    updates[`reactions/${currentProjectId}/${tid}`] = null;
+    await fbDb.ref().update(updates);
+    if (delTask) logActivity(currentProjectId, "delete", tid, delTask.title);
     closeTaskModal();
-    renderBoard();
-    renderListView();
   });
 
   // Tag add
@@ -764,12 +796,7 @@ function createTaskModal() {
     const input = document.getElementById("commentInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      const d = ensureData(currentProjectId);
-      d.comments[currentProjectId][editingTaskId] = d.comments[currentProjectId][editingTaskId] || [];
-      d.comments[currentProjectId][editingTaskId].push({ id: genId(), text, user: currentUser, createdAt: now() });
-      writeData(d);
-      comments[editingTaskId] = d.comments[currentProjectId][editingTaskId];
-      renderComments(editingTaskId);
+      fbDb.ref(`comments/${currentProjectId}/${editingTaskId}`).push({ text, user: currentUser, createdAt: now() });
       input.value = "";
     }
   });
@@ -780,12 +807,7 @@ function createTaskModal() {
     const input = document.getElementById("checklistInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      const d = ensureData(currentProjectId);
-      d.checklists[currentProjectId][editingTaskId] = d.checklists[currentProjectId][editingTaskId] || [];
-      d.checklists[currentProjectId][editingTaskId].push({ id: genId(), text, done: false });
-      writeData(d);
-      checklists[editingTaskId] = d.checklists[currentProjectId][editingTaskId];
-      renderChecklist(editingTaskId);
+      fbDb.ref(`checklists/${currentProjectId}/${editingTaskId}`).push({ text, done: false });
       input.value = "";
     }
   });
@@ -835,30 +857,23 @@ function saveTask() {
     lastModifiedBy: currentUser,
   };
 
-  const d = ensureData(currentProjectId);
   if (editingTaskId) {
-    const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
-    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
-    writeData(d);
-    tasks = d.tasks[currentProjectId];
+    fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
     logActivity(currentProjectId, "edit", editingTaskId, body.title);
     closeTaskModal();
-    renderBoard();
-    renderListView();
   } else {
-    body.createdBy = currentUser;
-    body.id = genId();
-    body.projectId = currentProjectId;
-    body.createdAt = now();
-    body.updatedAt = now();
-    body.order = d.tasks[currentProjectId].length;
-    d.tasks[currentProjectId].push(body);
-    writeData(d);
-    tasks = d.tasks[currentProjectId];
-    logActivity(currentProjectId, "create", body.id, body.title);
+    const ref = fbDb.ref(`tasks/${currentProjectId}`).push();
+    ref.set({
+      ...body,
+      id: ref.key,
+      createdBy: currentUser,
+      projectId: currentProjectId,
+      createdAt: now(),
+      updatedAt: now(),
+      order: tasks.length,
+    });
+    logActivity(currentProjectId, "create", ref.key, body.title);
     closeTaskModal();
-    renderBoard();
-    renderListView();
   }
 }
 
@@ -879,13 +894,7 @@ function autoSaveTask() {
       tags: getCurrentTags(),
       lastModifiedBy: currentUser,
     };
-    const d = ensureData(currentProjectId);
-    const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
-    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
-    writeData(d);
-    tasks = d.tasks[currentProjectId];
-    renderBoard();
-    renderListView();
+    fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
   }, 800);
 }
 
@@ -899,13 +908,7 @@ function saveTaskSilent(extra) {
     lastModifiedBy: currentUser,
     ...extra,
   };
-  const d = ensureData(currentProjectId);
-  const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
-  if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
-  writeData(d);
-  tasks = d.tasks[currentProjectId];
-  renderBoard();
-    renderListView();
+  fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
 }
 
 function closeTaskModal() {
@@ -919,9 +922,7 @@ function closeTaskModal() {
 
 // --- Comments ---
 function loadComments(taskId) {
-  const d = readData();
-  comments[taskId] = d.comments[currentProjectId]?.[taskId] || [];
-  renderComments(taskId);
+  listenComments(taskId);
 }
 
 function renderComments(taskId) {
@@ -941,9 +942,7 @@ function renderComments(taskId) {
 
 // --- Checklists ---
 function loadChecklist(taskId) {
-  const d = readData();
-  checklists[taskId] = d.checklists[currentProjectId]?.[taskId] || [];
-  renderChecklist(taskId);
+  listenChecklist(taskId);
 }
 
 function renderChecklist(taskId) {
@@ -961,22 +960,15 @@ function renderChecklist(taskId) {
     : "";
   container.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     cb.addEventListener("change", () => {
-      const d = ensureData(currentProjectId);
-      const items = d.checklists[currentProjectId]?.[taskId] || [];
-      const item = items.find((i) => i.id === cb.dataset.id);
-      if (item) item.done = cb.checked;
-      writeData(d);
-      checklists[taskId] = items;
+      const item = (checklists[taskId] || []).find((i) => i.id === cb.dataset.id);
+      if (item) {
+        fbDb.ref(`checklists/${currentProjectId}/${taskId}/${cb.dataset.id}`).update({ done: cb.checked });
+      }
     });
   });
   container.querySelectorAll(".check-del").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const d = ensureData(currentProjectId);
-      const items = (d.checklists[currentProjectId]?.[taskId] || []).filter((i) => i.id !== btn.dataset.id);
-      d.checklists[currentProjectId][taskId] = items;
-      writeData(d);
-      checklists[taskId] = items;
-      renderChecklist(taskId);
+      fbDb.ref(`checklists/${currentProjectId}/${taskId}/${btn.dataset.id}`).remove();
     });
   });
 }
