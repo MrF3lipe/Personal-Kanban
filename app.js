@@ -37,6 +37,13 @@ function ensureData(pid) {
   return d;
 }
 
+function logActivity(pid, type, taskId, taskTitle, extra) {
+  const d = ensureData(pid);
+  d.activity[pid].unshift({ type, taskId, taskTitle, user: currentUser, timestamp: now(), ...extra });
+  writeData(d);
+  if (pid === currentProjectId) activity = d.activity[pid];
+}
+
 function seedDemoData() {
   if (localStorage.getItem("kanban_data")) return;
   // Auto-join demo project
@@ -85,6 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("loginScreen").classList.add("hidden");
     document.getElementById("userBadge").textContent = currentUser;
     loadProjects();
+    const hash = window.location.hash.slice(1);
+    if (hash) handleRoute();
   } else {
     showLogin();
   }
@@ -163,19 +172,18 @@ function saveJoined(joined) { localStorage.setItem("kanban_joined", JSON.stringi
 
 function showConfirm(title, message, btnText) {
   return new Promise((resolve) => {
-    let overlay = document.getElementById("confirmOverlay");
-    if (!overlay) {
-      const tpl = document.getElementById("confirmDialog");
-      document.body.appendChild(tpl.content.cloneNode(true));
-      overlay = document.getElementById("confirmOverlay");
-      document.getElementById("confirmCancel").addEventListener("click", () => { overlay.classList.add("hidden"); resolve(false); });
-      document.getElementById("confirmOk").addEventListener("click", () => { overlay.classList.add("hidden"); resolve(true); });
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.classList.add("hidden"); resolve(false); } });
-    }
+    const old = document.getElementById("confirmOverlay");
+    if (old) old.remove();
+    const tpl = document.getElementById("confirmDialog");
+    document.body.appendChild(tpl.content.cloneNode(true));
+    const overlay = document.getElementById("confirmOverlay");
     document.getElementById("confirmTitle").textContent = title;
     document.getElementById("confirmMessage").textContent = message;
     document.getElementById("confirmOk").textContent = btnText || "Eliminar";
     overlay.classList.remove("hidden");
+    document.getElementById("confirmCancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
+    document.getElementById("confirmOk").addEventListener("click", () => { overlay.remove(); resolve(true); });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.remove(); resolve(false); } });
   });
 }
 
@@ -186,6 +194,8 @@ function renderProjects() {
 
   const joined = getJoined();
   const joinedIds = new Set(Object.keys(joined));
+  const allData = readData();
+  const tasksByProject = allData.tasks || {};
 
   const list = document.getElementById("projectsList");
   list.innerHTML = "";
@@ -202,7 +212,7 @@ function renderProjects() {
     div.querySelector(".project-name").textContent = p.name;
     div.querySelector(".project-desc").textContent = p.description || "Sin descripción";
     div.querySelector(".project-id-label code").textContent = p.id;
-    div.querySelector(".project-tasks-count").textContent = `0 tareas`;
+    div.querySelector(".project-tasks-count").textContent = `${(tasksByProject[p.id] || []).length} tareas`;
 
     if (joinedIds.has(p.id) || p.createdBy === currentUser) {
       hasJoined = true;
@@ -308,7 +318,8 @@ function renderProjects() {
         const data = JSON.parse(await file.text());
         const projectsData = Array.isArray(data) ? data : [data];
         const d = ensureData();
-        for (const p of projectsData) {
+        for (const item of projectsData) {
+          const p = item.project || item;
           const id = p.id || genId();
           d.projects[id] = {
             id,
@@ -321,6 +332,10 @@ function renderProjects() {
             wipLimits: p.wipLimits || p.project?.wipLimits || {},
             createdBy: currentUser,
           };
+          if (item.tasks) d.tasks[id] = item.tasks;
+          if (item.comments) d.comments[id] = item.comments;
+          if (item.checklists) d.checklists[id] = item.checklists;
+          if (item.reactions) d.reactions[id] = item.reactions;
         }
         writeData(d);
         alert(`${projectsData.length} proyecto(s) importado(s)`);
@@ -341,12 +356,12 @@ function openProject(pid) {
 
   const d = readData();
   const project = d.projects[pid];
-  if (!project) { navigate("/"); return; }
+  if (!project) { showProjectsView(); return; }
   document.getElementById("topbarTitle").textContent = project.name;
 
   const joined = getJoined();
   if (!(pid in joined)) {
-    navigate("/");
+    showProjectsView();
     return;
   }
 
@@ -445,7 +460,7 @@ function renderWip(project) {
     const count = tasks.filter((t) => t.status === colId).length;
     const limit = wip[colId];
     const label = labels[colId] || colId;
-    if (!limit) return `<span>${label}: ${count}</span>`;
+    if (limit === undefined || limit === null) return `<span>${label}: ${count}</span>`;
     const cls = count > limit ? "wip-over" : count >= limit * 0.8 ? "wip-warn" : "";
     return `<span class="${cls}">${label}: ${count}/${limit}</span>`;
   }).join(" ");
@@ -488,6 +503,7 @@ function renderBoard() {
 
     colTasks.forEach((task) => {
       body.appendChild(createCard(task));
+      renderReactionsForCard(task.id);
     });
 
     // Drag & drop
@@ -499,6 +515,7 @@ function renderBoard() {
       const tid = e.dataTransfer.getData("text/plain");
       const task = tasks.find((t) => t.id === tid);
       if (task && task.status !== colId) {
+        const oldStatus = task.status;
         const d = ensureData(currentProjectId);
         const idx = d.tasks[currentProjectId].findIndex((t) => t.id === tid);
         if (idx !== -1) {
@@ -506,6 +523,7 @@ function renderBoard() {
           writeData(d);
         }
         task.status = colId;
+        logActivity(currentProjectId, "move", tid, task.title, { from: oldStatus, to: colId });
         renderBoard();
         renderListView();
       }
@@ -587,8 +605,6 @@ function createCard(task) {
     touchDragging = false;
   }, { passive: true });
 
-  renderReactionsForCard(task.id);
-
   return card;
 }
 
@@ -630,7 +646,7 @@ function renderListView() {
           <td><span class="lt-status lt-${t.status === "in-progress" ? "progress" : t.status === "in-review" ? "review" : t.status === "completed" ? "done" : "pending"}">${labels[t.status] || t.status}</span></td>
           <td>${(t.priority || "p3").toUpperCase()}</td>
           <td>${t.assignee ? esc(t.assignee) : "—"}</td>
-          <td>${(t.tags || []).join(", ") || "—"}</td>
+          <td>${(t.tags || []).map(esc).join(", ") || "—"}</td>
           <td>${t.deadline ? formatDate(t.deadline) : "—"}</td>
         </tr>
       `).join("")}
@@ -645,7 +661,7 @@ function renderListView() {
 }
 
 // --- Task Modal ---
-async function openTaskModal(task) {
+function openTaskModal(task) {
   editingTaskId = task ? task.id : null;
   const overlay = document.getElementById("modal-overlay") || createTaskModal();
   overlay.classList.remove("hidden");
@@ -720,12 +736,14 @@ function createTaskModal() {
     const ok = await showConfirm("Eliminar tarea", "¿Eliminar esta tarea para siempre?", "Eliminar");
     if (!ok) return;
     const d = ensureData(currentProjectId);
+    const delTask = d.tasks[currentProjectId].find((t) => t.id === editingTaskId);
     d.tasks[currentProjectId] = d.tasks[currentProjectId].filter((t) => t.id !== editingTaskId);
     delete d.comments[currentProjectId][editingTaskId];
     delete d.checklists[currentProjectId][editingTaskId];
     delete d.reactions[currentProjectId][editingTaskId];
     writeData(d);
     tasks = d.tasks[currentProjectId];
+    if (delTask) logActivity(currentProjectId, "delete", editingTaskId, delTask.title);
     closeTaskModal();
     renderBoard();
     renderListView();
@@ -832,6 +850,7 @@ function saveTask() {
     if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
     writeData(d);
     tasks = d.tasks[currentProjectId];
+    logActivity(currentProjectId, "edit", editingTaskId, body.title);
     closeTaskModal();
     renderBoard();
     renderListView();
@@ -844,6 +863,7 @@ function saveTask() {
     d.tasks[currentProjectId].push(body);
     writeData(d);
     tasks = d.tasks[currentProjectId];
+    logActivity(currentProjectId, "create", body.id, body.title);
     closeTaskModal();
     renderBoard();
     renderListView();
@@ -884,9 +904,11 @@ function saveTaskSilent(extra) {
   };
   const d = ensureData(currentProjectId);
   const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
-  if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
-  writeData(d);
-  tasks = d.tasks[currentProjectId];
+    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
+    writeData(d);
+    tasks = d.tasks[currentProjectId];
+    renderBoard();
+    renderListView();
 }
 
 function closeTaskModal() {
@@ -894,6 +916,8 @@ function closeTaskModal() {
   const overlay = document.getElementById("modal-overlay");
   if (overlay) overlay.classList.add("hidden");
   editingTaskId = null;
+  renderBoard();
+  renderListView();
 }
 
 // --- Comments ---
