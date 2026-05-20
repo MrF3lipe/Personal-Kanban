@@ -371,6 +371,7 @@ function openProject(pid) {
   reactions = {};
   activity = d.activity[pid] || [];
   onlineUsers = [{ username: currentUser, online: true }];
+  activeFilters = { priority: "", assignee: "", tag: "" };
 
   renderKanban(project);
 }
@@ -684,7 +685,7 @@ function openTaskModal(task) {
     priority.value = task.priority || "p3";
     status.value = task.status || "pending";
     assignee.value = task.assignee || "";
-    deadline.value = task.deadline || "";
+    deadline.value = task.deadline ? task.deadline.split("T")[0] : "";
     createdBy.textContent = `Creado por ${task.createdBy || "?"}`;
     modifiedBy.textContent = `Última modificación: ${task.lastModifiedBy || "—"}`;
     deleteBtn.classList.remove("hidden");
@@ -751,13 +752,26 @@ function createTaskModal() {
       if (!tags.includes(tag)) {
         tags.push(tag);
         renderTags(tags);
+        saveTaskSilent({ tags: tags });
       }
       input.value = "";
     }
   });
-  container.appendChild(toggleBtn);
-}
-}
+
+  // Comment form
+  document.getElementById("commentForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("commentInput");
+    const text = input.value.trim();
+    if (text && editingTaskId) {
+      const d = ensureData(currentProjectId);
+      d.comments[currentProjectId][editingTaskId] = d.comments[currentProjectId][editingTaskId] || [];
+      d.comments[currentProjectId][editingTaskId].push({ id: genId(), text, user: currentUser, createdAt: now() });
+      writeData(d);
+      comments[editingTaskId] = d.comments[currentProjectId][editingTaskId];
+      renderComments(editingTaskId);
+      input.value = "";
+    }
   });
 
   // Checklist form
@@ -837,6 +851,7 @@ function saveTask() {
     body.projectId = currentProjectId;
     body.createdAt = now();
     body.updatedAt = now();
+    body.order = d.tasks[currentProjectId].length;
     d.tasks[currentProjectId].push(body);
     writeData(d);
     tasks = d.tasks[currentProjectId];
@@ -861,6 +876,7 @@ function autoSaveTask() {
       status: document.getElementById("modalStatus").value,
       assignee: document.getElementById("modalAssignee").value,
       deadline: document.getElementById("modalDeadline").value || null,
+      tags: getCurrentTags(),
       lastModifiedBy: currentUser,
     };
     const d = ensureData(currentProjectId);
@@ -868,23 +884,27 @@ function autoSaveTask() {
     if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
     writeData(d);
     tasks = d.tasks[currentProjectId];
+    renderBoard();
+    renderListView();
   }, 800);
 }
 
 function saveTaskSilent(extra) {
   if (!editingTaskId) return;
+  const title = document.getElementById("modalTitle").value.trim();
+  if (!title) return;
   const body = {
-    title: document.getElementById("modalTitle").value.trim(),
+    title,
     tags: getCurrentTags(),
     lastModifiedBy: currentUser,
     ...extra,
   };
   const d = ensureData(currentProjectId);
   const idx = d.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
-    if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
-    writeData(d);
-    tasks = d.tasks[currentProjectId];
-    renderBoard();
+  if (idx !== -1) Object.assign(d.tasks[currentProjectId][idx], body, { updatedAt: now() });
+  writeData(d);
+  tasks = d.tasks[currentProjectId];
+  renderBoard();
     renderListView();
 }
 
@@ -1061,6 +1081,8 @@ function openColumnsModal(project) {
     const newWip = {};
     const newColors = {};
     const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
+    const d = readData();
+    const existingColors = d.projects[currentProjectId]?.columnColors || {};
     list.querySelectorAll(".col-edit-item").forEach((item, i) => {
       const key = item.querySelector(".col-key").value.trim();
       const label = item.querySelector(".col-label").value.trim();
@@ -1068,11 +1090,10 @@ function openColumnsModal(project) {
       if (key) {
         newCols.push(key);
         newLabels[key] = label || key;
-        newColors[key] = palette[i % palette.length];
+        newColors[key] = existingColors[key] || palette[i % palette.length];
         if (wip > 0) newWip[key] = wip;
       }
     });
-    const d = readData();
     if (d.projects[currentProjectId]) {
       // Migrate orphaned tasks to first column
       const oldCols = d.projects[currentProjectId].columns || [];
