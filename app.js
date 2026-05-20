@@ -233,15 +233,16 @@ function renderProjects() {
   const joined = getJoined();
   const joinedIds = new Set(Object.keys(joined));
 
-  const list = document.getElementById("projectsList");
-  list.innerHTML = "";
-
   const joinedSection = document.getElementById("joinedProjects");
   const joinedList = document.createElement("div");
   joinedList.className = "projects-grid";
   let hasJoined = false;
 
+  // Only show projects the user created or has joined
   projects.forEach((p) => {
+    if (!joinedIds.has(p.id) && p.createdBy !== currentUser) return;
+
+    hasJoined = true;
     const card = document.getElementById("projectCard").content.cloneNode(true);
     const div = card.querySelector(".project-card");
     div.dataset.id = p.id;
@@ -249,71 +250,75 @@ function renderProjects() {
     div.querySelector(".project-desc").textContent = p.description || "Sin descripción";
     div.querySelector(".project-id-label code").textContent = p.id;
 
-    if (joinedIds.has(p.id) || p.createdBy === currentUser) {
-      hasJoined = true;
-      div.classList.add("joined");
-      const badge = document.createElement("span");
-      badge.className = "joined-badge";
-      badge.textContent = "✓";
-      div.querySelector(".project-card-header").appendChild(badge);
-      if (!joinedIds.has(p.id)) { joined[p.id] = ""; saveJoined(joined); }
-      div.addEventListener("click", (e) => {
-        if (e.target.closest(".project-delete")) return;
-        navigate(`/project/${p.id}`);
+    if (!joinedIds.has(p.id)) { joined[p.id] = ""; saveJoined(joined); }
+
+    // Copy ID button
+    div.querySelector(".copy-id-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(p.id).then(() => {
+        const btn = e.currentTarget;
+        btn.textContent = "✓";
+        setTimeout(() => { btn.textContent = "📋"; }, 1500);
       });
-      joinedList.appendChild(div);
+    });
+
+    // Delete button: only for creator
+    if (p.createdBy !== currentUser) {
+      div.querySelector(".project-delete").classList.add("hidden");
     } else {
-      div.addEventListener("click", (e) => {
-        if (e.target.closest(".project-delete")) return;
-        fbDb.ref(`projects/${p.id}`).once("value", snap => {
-          const proj = snap.val();
-          if (proj && proj.password && proj.password !== "") {
-            const pw = prompt(`Ingresa la clave del proyecto "${p.name}":`);
-            if (pw === null) return;
-            if (pw !== proj.password) { alert("Clave incorrecta"); return; }
-          }
-          joined[p.id] = "";
-          saveJoined(joined);
-          navigate(`/project/${p.id}`);
-        });
+      div.querySelector(".project-delete").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
+        if (!ok) return;
+        const updates = {};
+        updates[`projects/${p.id}`] = null;
+        updates[`tasks/${p.id}`] = null;
+        updates[`comments/${p.id}`] = null;
+        updates[`checklists/${p.id}`] = null;
+        updates[`reactions/${p.id}`] = null;
+        updates[`activity/${p.id}`] = null;
+        updates[`presence/${p.id}`] = null;
+        await fbDb.ref().update(updates);
+        delete joined[p.id];
+        saveJoined(joined);
+        loadProjects();
       });
-      list.appendChild(div);
     }
 
-    div.querySelector(".project-delete").addEventListener("click", async (e) => {
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
-      if (!ok) return;
-      const updates = {};
-      updates[`projects/${p.id}`] = null;
-      updates[`tasks/${p.id}`] = null;
-      updates[`comments/${p.id}`] = null;
-      updates[`checklists/${p.id}`] = null;
-      updates[`reactions/${p.id}`] = null;
-      updates[`activity/${p.id}`] = null;
-      updates[`presence/${p.id}`] = null;
-      await fbDb.ref().update(updates);
-      delete joined[p.id];
-      saveJoined(joined);
-      loadProjects();
+    div.addEventListener("click", (e) => {
+      if (e.target.closest(".project-delete") || e.target.closest(".copy-id-btn")) return;
+      navigate(`/project/${p.id}`);
     });
+
+    joinedList.appendChild(div);
   });
 
   if (hasJoined) {
     joinedSection.innerHTML = "<h3>Mis proyectos</h3>";
     joinedSection.appendChild(joinedList);
   } else {
-    joinedSection.innerHTML = "";
+    joinedSection.innerHTML = "<p class='empty-state'>No tienes proyectos aún. Crea uno nuevo o únete a uno existente.</p>";
   }
 
-  document.getElementById("newProjectBtn").addEventListener("click", () => {
+  // Create project with custom ID
+  document.getElementById("newProjectBtn").addEventListener("click", async () => {
     const name = prompt("Nombre del proyecto:");
     if (!name || !name.trim()) return;
+    const customId = prompt("ID del proyecto (déjalo vacío para generar uno automático):");
+    let id;
+    if (customId && customId.trim()) {
+      id = customId.trim().toLowerCase().replace(/\s+/g, "-");
+      const snap = await fbDb.ref(`projects/${id}`).once("value");
+      if (snap.exists()) {
+        alert(`El ID "${id}" ya existe. Usa otro o déjalo vacío para generar uno automático.`);
+        return;
+      }
+    } else {
+      id = fbDb.ref("projects").push().key;
+    }
     const password = prompt("Clave del proyecto (dejar vacío para público):") || "";
-    const ref = fbDb.ref("projects").push();
-    const id = ref.key;
-    ref.set({
+    await fbDb.ref(`projects/${id}`).set({
       id, name: name.trim(), password,
       columns: ["pending","in-progress","in-review","completed"],
       columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
@@ -323,9 +328,10 @@ function renderProjects() {
     });
     joined[id] = password;
     saveJoined(joined);
-    loadProjects();
+    navigate(`/project/${id}`);
   });
 
+  // Join form
   document.getElementById("joinForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const id = document.getElementById("joinId").value.trim();
