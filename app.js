@@ -15,13 +15,11 @@ let tasks = [];
 let comments = {};
 let checklists = {};
 let reactions = {};
-let activity = [];
 let currentProjectId = null;
 let editingTaskId = null;
 let onlineUsers = [];
 let activeFilters = { priority: "", assignee: "", tag: "" };
 let viewMode = "board";
-let usersMap = {};
 
 // --- Firebase listeners refs ---
 let fbListeners = { tasks: null, comments: {}, checklists: {}, reactions: {}, presence: null };
@@ -69,7 +67,12 @@ function listenReactions(taskId) {
   if (fbListeners.reactions[taskId]) fbListeners.reactions[taskId].off();
   fbListeners.reactions[taskId] = fbDb.ref(`reactions/${currentProjectId}/${taskId}`);
   fbListeners.reactions[taskId].on("value", snap => {
-    reactions[taskId] = snap.val() || {};
+    const data = snap.val() || {};
+    const converted = {};
+    Object.keys(data).forEach(emoji => {
+      converted[emoji] = Object.keys(data[emoji]);
+    });
+    reactions[taskId] = converted;
     renderReactions(taskId);
   });
 }
@@ -398,6 +401,11 @@ function openProject(pid) {
       showProjectsView();
       return;
     }
+
+    // Ensure project is in local array for renderBoard
+    const idx = projects.findIndex(p => p.id === pid);
+    if (idx === -1) projects.push({ id: pid, ...project });
+    else projects[idx] = { id: pid, ...project };
 
     comments = {};
     checklists = {};
@@ -975,11 +983,7 @@ function renderChecklist(taskId) {
 
 // --- Reactions ---
 function renderReactionsForCard(taskId) {
-  const container = document.getElementById(`reactions-${taskId}`);
-  if (!container) return;
-  const d = readData();
-  reactions[taskId] = d.reactions[currentProjectId]?.[taskId] || {};
-  renderReactions(taskId);
+  listenReactions(taskId);
 }
 
 function renderReactions(taskId) {
@@ -997,18 +1001,12 @@ function renderReactions(taskId) {
   container.querySelectorAll(".reaction-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const emoji = btn.dataset.emoji;
-      const taskId = btn.dataset.task;
-      const d = ensureData(currentProjectId);
-      d.reactions[currentProjectId][taskId] = d.reactions[currentProjectId][taskId] || {};
-      const users = d.reactions[currentProjectId][taskId][emoji] || [];
-      const idx = users.indexOf(currentUser);
-      if (idx === -1) users.push(currentUser);
-      else users.splice(idx, 1);
-      if (users.length === 0) delete d.reactions[currentProjectId][taskId][emoji];
-      else d.reactions[currentProjectId][taskId][emoji] = users;
-      writeData(d);
-      reactions[taskId] = d.reactions[currentProjectId][taskId];
-      renderReactions(taskId);
+      const tId = btn.dataset.task;
+      const ref = fbDb.ref(`reactions/${currentProjectId}/${tId}/${emoji}/${currentUser}`);
+      ref.once("value").then(snap => {
+        if (snap.val()) ref.remove();
+        else ref.set(true);
+      });
     });
   });
 }
@@ -1067,14 +1065,15 @@ function openColumnsModal(project) {
   document.getElementById("closeColumns").addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 
-  document.getElementById("saveColumnsBtn").addEventListener("click", () => {
+  document.getElementById("saveColumnsBtn").addEventListener("click", async () => {
     const newCols = [];
     const newLabels = {};
     const newWip = {};
     const newColors = {};
     const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
-    const d = readData();
-    const existingColors = d.projects[currentProjectId]?.columnColors || {};
+    const snap = await fbDb.ref(`projects/${currentProjectId}`).once("value");
+    const proj = snap.val() || {};
+    const existingColors = proj.columnColors || {};
     list.querySelectorAll(".col-edit-item").forEach((item, i) => {
       const key = item.querySelector(".col-key").value.trim();
       const label = item.querySelector(".col-label").value.trim();
@@ -1086,31 +1085,39 @@ function openColumnsModal(project) {
         if (wip > 0) newWip[key] = wip;
       }
     });
-    if (d.projects[currentProjectId]) {
-      // Migrate orphaned tasks to first column
-      const oldCols = d.projects[currentProjectId].columns || [];
-      const removedCols = oldCols.filter((c) => !newCols.includes(c));
-      const firstCol = newCols[0] || "pending";
-      (d.tasks[currentProjectId] || []).forEach((t) => {
-        if (removedCols.includes(t.status)) t.status = firstCol;
+    // Migrate orphaned tasks to first column
+    const oldCols = proj.columns || [];
+    const removedCols = oldCols.filter((c) => !newCols.includes(c));
+    const firstCol = newCols[0] || "pending";
+    if (removedCols.length > 0) {
+      const taskSnap = await fbDb.ref(`tasks/${currentProjectId}`).once("value");
+      const allTasks = taskSnap.val() || {};
+      const taskUpdates = {};
+      Object.keys(allTasks).forEach(tid => {
+        if (removedCols.includes(allTasks[tid].status)) {
+          taskUpdates[`tasks/${currentProjectId}/${tid}/status`] = firstCol;
+        }
       });
-      Object.assign(d.projects[currentProjectId], { columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip });
-      writeData(d);
+      if (Object.keys(taskUpdates).length > 0) await fbDb.ref().update(taskUpdates);
     }
+    await fbDb.ref(`projects/${currentProjectId}`).update({
+      columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip,
+    });
     overlay.remove();
     openProject(currentProjectId);
   });
 }
 
 // --- Export ---
-function exportProject() {
-  const d = readData();
+async function exportProject() {
+  const snap = await fbDb.ref().once("value");
+  const all = snap.val() || {};
   const data = {
-    project: d.projects[currentProjectId],
-    tasks: d.tasks[currentProjectId] || [],
-    comments: d.comments[currentProjectId] || {},
-    checklists: d.checklists[currentProjectId] || {},
-    reactions: d.reactions[currentProjectId] || {},
+    project: all.projects?.[currentProjectId],
+    tasks: all.tasks?.[currentProjectId] || [],
+    comments: all.comments?.[currentProjectId] || {},
+    checklists: all.checklists?.[currentProjectId] || {},
+    reactions: all.reactions?.[currentProjectId] || {},
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1203,16 +1210,20 @@ function toggleActivity() {
 function renderActivity() {
   const container = document.getElementById("activityList");
   if (!container) return;
-  container.innerHTML = activity.map((a) => {
-    const typeMap = { create: "creó", move: "movió", edit: "editó" };
-    const detail = a.from && a.to
-      ? ` de "${a.from}" a "${a.to}"`
-      : "";
-    return `<div class="activity-item">
-      <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.taskTitle)}"${detail}
-      <span class="at-time">${timeAgo(a.timestamp)}</span>
-    </div>`;
-  }).join("");
+  fbDb.ref(`activity/${currentProjectId}`).orderByChild("timestamp").limitToLast(100).once("value", snap => {
+    const data = snap.val() || {};
+    const items = Object.keys(data).map(k => data[k]).reverse();
+    container.innerHTML = items.map((a) => {
+      const typeMap = { create: "creó", move: "movió", edit: "editó" };
+      const detail = a.from && a.to
+        ? ` de "${a.from}" a "${a.to}"`
+        : "";
+      return `<div class="activity-item">
+        <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.taskTitle)}"${detail}
+        <span class="at-time">${timeAgo(a.timestamp)}</span>
+      </div>`;
+    }).join("");
+  });
 }
 
 // Check for activity button click
