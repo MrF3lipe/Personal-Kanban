@@ -366,6 +366,9 @@ function openProject(pid) {
   }
 
   tasks = d.tasks[pid] || [];
+  comments = {};
+  checklists = {};
+  reactions = {};
   activity = d.activity[pid] || [];
   onlineUsers = [{ username: currentUser, online: true }];
 
@@ -387,17 +390,6 @@ function renderUsers() {
     dot.appendChild(tip);
     container.appendChild(dot);
   });
-  // Toggle own status
-  if (onlineUsers.some((u) => u.username === currentUser)) {
-    const toggleBtn = document.createElement("button");
-    toggleBtn.className = "topbar-btn";
-    toggleBtn.title = "Cambiar estado";
-    toggleBtn.innerHTML = onlineUsers.find((u) => u.username === currentUser)?.online ? "●" : "○";
-    toggleBtn.addEventListener("click", () => {
-      // Offline: no-op
-    });
-    container.appendChild(toggleBtn);
-  }
 }
 
 // --- Kanban Render ---
@@ -763,24 +755,9 @@ function createTaskModal() {
       input.value = "";
     }
   });
-  document.getElementById("tagInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); document.getElementById("addTagBtn").click(); }
-  });
-
-  // Comment form
-  document.getElementById("commentForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const input = document.getElementById("commentInput");
-    const text = input.value.trim();
-    if (text && editingTaskId) {
-      const d = ensureData(currentProjectId);
-      d.comments[currentProjectId][editingTaskId] = d.comments[currentProjectId][editingTaskId] || [];
-      d.comments[currentProjectId][editingTaskId].push({ id: genId(), text, user: currentUser, createdAt: now() });
-      writeData(d);
-      comments[editingTaskId] = d.comments[currentProjectId][editingTaskId];
-      renderComments(editingTaskId);
-      input.value = "";
-    }
+  container.appendChild(toggleBtn);
+}
+}
   });
 
   // Checklist form
@@ -1097,6 +1074,13 @@ function openColumnsModal(project) {
     });
     const d = readData();
     if (d.projects[currentProjectId]) {
+      // Migrate orphaned tasks to first column
+      const oldCols = d.projects[currentProjectId].columns || [];
+      const removedCols = oldCols.filter((c) => !newCols.includes(c));
+      const firstCol = newCols[0] || "pending";
+      (d.tasks[currentProjectId] || []).forEach((t) => {
+        if (removedCols.includes(t.status)) t.status = firstCol;
+      });
       Object.assign(d.projects[currentProjectId], { columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip });
       writeData(d);
     }
