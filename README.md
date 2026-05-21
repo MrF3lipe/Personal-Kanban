@@ -1,12 +1,10 @@
-# ⊞ Kanban Collab
+# ⊞ Kanban
 
-Tablero Kanban colaborativo en **tiempo real** con Firebase, presencia multiusuario, arrastrar y soltar, y protección por clave de proyecto.
+Tablero Kanban con arrastrar y soltar, múltiples proyectos, filtros, búsqueda, checklists, comentarios, reacciones, y protección por clave.
 
 ## ✨ Características
 
-- **⚡ Tiempo real** — Firebase Realtime Database sincroniza cambios al instante entre todos los usuarios
-- **👥 Presencia** — Quién está online aparece en bolitas con tooltip; los usuarios desaparecen al cerrar sesión
-- **📋 Arrastrar y soltar** — Mueve tareas entre columnas con drag & drop (ratón y táctil)
+- **📋 Arrastrar y soltar** — Mueve tareas entre columnas (ratón y táctil)
 - **🔐 Proyectos con clave** — Cada proyecto tiene clave opcional; comparte ID + clave para colaborar
 - **🆔 ID personalizado** — Al crear proyecto puedes elegir tu propio ID (sin duplicados)
 - **📋 Copiar ID** — Botón para copiar el ID del proyecto al portapapeles
@@ -22,6 +20,7 @@ Tablero Kanban colaborativo en **tiempo real** con Firebase, presencia multiusua
 - **📦 Exportar/Importar** — Descarga proyectos como JSON o impórtalos
 - **⌨️ Atajos** — `N` nueva tarea, `B` cambiar vista, `F` buscar, `Esc` cerrar, `?` ayuda
 - **📱 Responsive** — Funciona en escritorio, tablet y móvil
+- **💾 100% local** — Sin servidor, sin conexión externa. Todo se guarda en localStorage.
 
 ## 🖥️ Diseño
 
@@ -29,9 +28,9 @@ Vidrio oscuro con gradientes animados de fondo, tipografía **DM Sans** + **Syne
 
 ## 🚀 Inicio rápido
 
-1. Abre **https://mrf3lipe.github.io/Personal-Kanban/**
-2. Escribe tu nombre y haz clic en **Entrar al tablero**
-3. Crea un proyecto o pide el ID de uno existente
+Abre `index.html` en tu navegador. No necesita instalación ni servidor.
+
+O visítalo online: **https://mrf3lipe.github.io/Personal-Kanban/**
 
 ### Crear un proyecto
 
@@ -49,14 +48,14 @@ Vidrio oscuro con gradientes animados de fondo, tipografía **DM Sans** + **Syne
 
 ## ☁️ Despliegue
 
-La app está diseñada para **GitHub Pages** (sin backend propio):
+La app es **100% estática**. Súbela a GitHub Pages, Netlify, Vercel, o cualquier hosting estático:
 
 1. Sube el código a un repo de GitHub
 2. **Settings → Pages → Source**: "Deploy from a branch"
 3. Branch: `main`, folder: `/ (root)`
-4. La app funciona directamente desde `https://<user>.github.io/<repo>/`
+4. Listo
 
-Solo necesitas crear un proyecto en [Firebase Console](https://console.firebase.google.com/), activar **Realtime Database** con reglas públicas (`.read: true, .write: true`) y poner la config en `config.js`.
+Todos los datos se guardan en el navegador (localStorage). Sin servidor, sin backend, sin cuenta.
 
 ## 🗂️ Estructura
 
@@ -64,21 +63,19 @@ Solo necesitas crear un proyecto en [Firebase Console](https://console.firebase.
 kanban/
 ├── index.html          # SPA completo con templates HTML
 ├── style.css           # Tema cyber-glass (oscuro/claro)
-├── app.js              # Toda la lógica frontend (Firebase Realtime)
-├── config.js           # Configuración de Firebase
+├── app.js              # Toda la lógica (localStorage)
 └── README.md
 ```
 
-Sin dependencias de backend — solo Firebase CDN. Sin Node.js, sin npm, sin build.
+Sin dependencias externas. Sin Firebase, sin Node.js, sin build.
 
 ## 🔧 Stack
 
 | Capa       | Tecnología                          |
 |------------|-------------------------------------|
 | Frontend   | HTML5 + CSS3 + JavaScript (ES2024)  |
-| Base de datos | Firebase Realtime Database        |
-| Auth       | Solo nombre de usuario (sin login)  |
-| Hosting    | GitHub Pages                        |
+| Datos      | localStorage                        |
+| Hosting    | GitHub Pages (o cualquier estático) |
 
 ## 📄 Licencia
 

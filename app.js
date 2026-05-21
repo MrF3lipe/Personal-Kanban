@@ -1,10 +1,15 @@
 /* ============================================================
-   Kanban v2 — Frontend App (Firebase Realtime)
+   Kanban v2 — Frontend App (localStorage)
    ============================================================ */
 
-// --- Firebase ---
-firebase.initializeApp(firebaseConfig);
-const fbDb = firebase.database();
+// --- Data Layer ---
+const DATA_KEY = "kanban_data";
+function readData() {
+  try { return JSON.parse(localStorage.getItem(DATA_KEY) || '{"projects":{},"tasks":{},"comments":{},"checklists":{},"reactions":{},"activity":{}}'); }
+  catch { return {projects:{},tasks:{},comments:{},checklists:{},reactions:{},activity:{}}; }
+}
+function writeData(data) { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 9); }
 
 // --- State ---
 let currentUser = localStorage.getItem("kanban_user") || "";
@@ -20,82 +25,14 @@ let onlineUsers = [];
 let activeFilters = { priority: "", assignee: "", tag: "" };
 let viewMode = "board";
 
-// --- Firebase listeners refs ---
-let fbListeners = { tasks: null, comments: {}, checklists: {}, reactions: {}, presence: null };
-
-function detachListeners() {
-  if (fbListeners.tasks) { fbListeners.tasks.off(); fbListeners.tasks = null; }
-  Object.values(fbListeners.comments).forEach(r => r.off()); fbListeners.comments = {};
-  Object.values(fbListeners.checklists).forEach(r => r.off()); fbListeners.checklists = {};
-  Object.values(fbListeners.reactions).forEach(r => r.off()); fbListeners.reactions = {};
-  if (fbListeners.presence) { fbListeners.presence.off(); fbListeners.presence = null; }
-}
-
-function listenTasks(pid) {
-  if (fbListeners.tasks) fbListeners.tasks.off();
-  fbListeners.tasks = fbDb.ref(`tasks/${pid}`);
-  fbListeners.tasks.on("value", snap => {
-    const data = snap.val();
-    tasks = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
-    renderBoard();
-    renderListView();
-  });
-}
-
-function listenComments(taskId) {
-  if (fbListeners.comments[taskId]) fbListeners.comments[taskId].off();
-  fbListeners.comments[taskId] = fbDb.ref(`comments/${currentProjectId}/${taskId}`);
-  fbListeners.comments[taskId].on("value", snap => {
-    const data = snap.val();
-    comments[taskId] = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
-    if (editingTaskId === taskId) renderComments(taskId);
-  });
-}
-
-function listenChecklist(taskId) {
-  if (fbListeners.checklists[taskId]) fbListeners.checklists[taskId].off();
-  fbListeners.checklists[taskId] = fbDb.ref(`checklists/${currentProjectId}/${taskId}`);
-  fbListeners.checklists[taskId].on("value", snap => {
-    const data = snap.val();
-    checklists[taskId] = data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : [];
-    if (editingTaskId === taskId) renderChecklist(taskId);
-  });
-}
-
-function listenReactions(taskId) {
-  if (fbListeners.reactions[taskId]) fbListeners.reactions[taskId].off();
-  fbListeners.reactions[taskId] = fbDb.ref(`reactions/${currentProjectId}/${taskId}`);
-  fbListeners.reactions[taskId].on("value", snap => {
-    const data = snap.val() || {};
-    const converted = {};
-    Object.keys(data).forEach(emoji => {
-      converted[emoji] = Object.keys(data[emoji]);
-    });
-    reactions[taskId] = converted;
-    renderReactions(taskId);
-  });
-}
-
-function listenPresence(pid) {
-  if (fbListeners.presence) fbListeners.presence.off();
-  fbListeners.presence = fbDb.ref(`presence/${pid}`);
-  fbListeners.presence.on("value", snap => {
-    const data = snap.val() || {};
-    onlineUsers = Object.keys(data).map(u => ({ username: u, online: true }));
-    renderUsers();
-  });
-}
-
-// --- Auth ---
-// No Firebase auth needed — simple username system.
-// Database rules should allow public read/write.
-
 // --- Helpers ---
 function now() { return new Date().toISOString(); }
 
 function logActivity(pid, type, taskId, taskTitle, extra) {
-  const ref = fbDb.ref(`activity/${pid}`).push();
-  ref.set({ type, taskId, taskTitle, user: currentUser, timestamp: now(), ...extra });
+  const data = readData();
+  if (!data.activity[pid]) data.activity[pid] = [];
+  data.activity[pid].push({ type, taskId, taskTitle, user: currentUser, timestamp: now(), ...extra });
+  writeData(data);
 }
 
 const COLORS = ["#58a6ff","#3fb950","#d29922","#bc8cff","#db61a2","#39d2c0","#f85149","#e6edf3"];
@@ -120,7 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.getElementById("logoutBtn").addEventListener("click", () => {
-    detachListeners();
     localStorage.removeItem("kanban_user");
     currentUser = "";
     document.getElementById("app").classList.add("hidden");
@@ -136,7 +72,7 @@ function showLogin() {
 }
 
 function initLogin() {
-  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const name = document.getElementById("loginInput").value.trim();
     if (name) {
@@ -171,19 +107,13 @@ function navigate(hash) {
 
 // --- Projects ---
 function loadProjects() {
-  fbDb.ref("projects").once("value", snap => {
-    const data = snap.val() || {};
-    projects = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-    renderProjects();
-  });
+  const data = readData();
+  projects = Object.values(data.projects || {});
+  renderProjects();
 }
 
 function showProjectsView() {
-  detachListeners();
-  if (currentProjectId) {
-    fbDb.ref(`presence/${currentProjectId}/${currentUser}`).remove();
-    currentProjectId = null;
-  }
+  if (currentProjectId) currentProjectId = null;
   document.getElementById("backBtn").classList.add("hidden");
   document.getElementById("toggleSearchBtn").classList.add("hidden");
   document.getElementById("searchWrap").classList.add("hidden");
@@ -247,7 +177,9 @@ function renderProjects() {
   joinedList.className = "projects-grid";
   let hasJoined = false;
 
-  // Only show projects the user created or has joined
+  const data = readData();
+  const tasksByProject = data.tasks || {};
+
   projects.forEach((p) => {
     if (!joinedIds.has(p.id) && p.createdBy !== currentUser) return;
 
@@ -280,15 +212,14 @@ function renderProjects() {
         e.stopImmediatePropagation();
         const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar");
         if (!ok) return;
-        const updates = {};
-        updates[`projects/${p.id}`] = null;
-        updates[`tasks/${p.id}`] = null;
-        updates[`comments/${p.id}`] = null;
-        updates[`checklists/${p.id}`] = null;
-        updates[`reactions/${p.id}`] = null;
-        updates[`activity/${p.id}`] = null;
-        updates[`presence/${p.id}`] = null;
-        await fbDb.ref().update(updates);
+        const data = readData();
+        delete data.projects[p.id];
+        delete data.tasks[p.id];
+        delete data.comments[p.id];
+        delete data.checklists[p.id];
+        delete data.reactions[p.id];
+        delete data.activity[p.id];
+        writeData(data);
         delete joined[p.id];
         saveJoined(joined);
         loadProjects();
@@ -318,23 +249,25 @@ function renderProjects() {
     let id;
     if (customId && customId.trim()) {
       id = customId.trim().toLowerCase().replace(/\s+/g, "-");
-      const snap = await fbDb.ref(`projects/${id}`).once("value");
-      if (snap.exists()) {
+      const data = readData();
+      if (data.projects[id]) {
         alert(`El ID "${id}" ya existe. Usa otro o déjalo vacío para generar uno automático.`);
         return;
       }
     } else {
-      id = fbDb.ref("projects").push().key;
+      id = genId();
     }
     const password = await showPrompt("Clave del proyecto (vacío = público)", "opcional", "Crear proyecto") || "";
-    await fbDb.ref(`projects/${id}`).set({
+    const data = readData();
+    data.projects[id] = {
       id, name: name.trim(), password,
       columns: ["pending","in-progress","in-review","completed"],
       columnLabels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
       columnColors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
       wipLimits: {},
       createdBy: currentUser,
-    });
+    };
+    writeData(data);
     joined[id] = password;
     saveJoined(joined);
     navigate(`/project/${id}`);
@@ -346,18 +279,17 @@ function renderProjects() {
     const id = document.getElementById("joinId").value.trim();
     const password = document.getElementById("joinPassword").value;
     const errEl = document.getElementById("joinError");
-    fbDb.ref(`projects/${id}`).once("value", snap => {
-      const proj = snap.val();
-      if (proj && (!proj.password || proj.password === password)) {
-        joined[id] = password;
-        saveJoined(joined);
-        errEl.classList.add("hidden");
-        navigate(`/project/${id}`);
-      } else {
-        errEl.textContent = "ID o clave incorrectos";
-        errEl.classList.remove("hidden");
-      }
-    });
+    const data = readData();
+    const proj = data.projects[id];
+    if (proj && (!proj.password || proj.password === password)) {
+      joined[id] = password;
+      saveJoined(joined);
+      errEl.classList.add("hidden");
+      navigate(`/project/${id}`);
+    } else {
+      errEl.textContent = "ID o clave incorrectos";
+      errEl.classList.remove("hidden");
+    }
   });
 
   document.getElementById("importBtn").addEventListener("click", () => {
@@ -368,13 +300,13 @@ function renderProjects() {
       const file = input.files[0];
       if (!file) return;
       try {
-        const data = JSON.parse(await file.text());
-        const projectsData = Array.isArray(data) ? data : [data];
+        const imported = JSON.parse(await file.text());
+        const projectsData = Array.isArray(imported) ? imported : [imported];
+        const data = readData();
         for (const item of projectsData) {
           const p = item.project || item;
-          const ref = fbDb.ref("projects").push();
-          const id = ref.key;
-          ref.set({
+          const id = p.id || genId();
+          data.projects[id] = {
             id,
             name: p.name || p.project?.name || "Importado",
             description: p.description || p.project?.description || "",
@@ -384,12 +316,13 @@ function renderProjects() {
             columnColors: p.columnColors || p.project?.columnColors || {},
             wipLimits: p.wipLimits || p.project?.wipLimits || {},
             createdBy: currentUser,
-          });
-          if (item.tasks) fbDb.ref(`tasks/${id}`).set(item.tasks);
-          if (item.comments) fbDb.ref(`comments/${id}`).set(item.comments);
-          if (item.checklists) fbDb.ref(`checklists/${id}`).set(item.checklists);
-          if (item.reactions) fbDb.ref(`reactions/${id}`).set(item.reactions);
+          };
+          if (item.tasks) data.tasks[id] = item.tasks;
+          if (item.comments) data.comments[id] = item.comments;
+          if (item.checklists) data.checklists[id] = item.checklists;
+          if (item.reactions) data.reactions[id] = item.reactions;
         }
+        writeData(data);
         alert(`${projectsData.length} proyecto(s) importado(s)`);
         loadProjects();
       } catch (err) {
@@ -406,36 +339,29 @@ function openProject(pid) {
   document.getElementById("backBtn").classList.remove("hidden");
   document.getElementById("toggleSearchBtn").classList.remove("hidden");
 
-  fbDb.ref(`projects/${pid}`).once("value", snap => {
-    const project = snap.val();
-    if (!project) { showProjectsView(); return; }
-    document.getElementById("topbarTitle").textContent = project.name;
+  const data = readData();
+  const project = data.projects[pid];
+  if (!project) { showProjectsView(); return; }
+  document.getElementById("topbarTitle").textContent = project.name;
 
-    const joined = getJoined();
-    if (!(pid in joined)) {
-      showProjectsView();
-      return;
-    }
+  const joined = getJoined();
+  if (!(pid in joined)) {
+    showProjectsView();
+    return;
+  }
 
-    // Ensure project is in local array for renderBoard
-    const idx = projects.findIndex(p => p.id === pid);
-    if (idx === -1) projects.push({ id: pid, ...project });
-    else projects[idx] = { id: pid, ...project };
+  tasks = data.tasks[pid] || [];
+  comments = {};
+  checklists = {};
+  reactions = {};
+  activeFilters = { priority: "", assignee: "", tag: "" };
 
-    comments = {};
-    checklists = {};
-    reactions = {};
-    activeFilters = { priority: "", assignee: "", tag: "" };
+  // Refresh tasks from data (manual sync — no listeners)
+  const idx = projects.findIndex(p => p.id === pid);
+  if (idx === -1) projects.push({ id: pid, ...project });
+  else projects[idx] = { id: pid, ...project };
 
-    listenTasks(pid);
-    listenPresence(pid);
-
-    // Set presence
-    fbDb.ref(`presence/${pid}/${currentUser}`).onDisconnect().remove();
-    fbDb.ref(`presence/${pid}/${currentUser}`).set({ online: true, lastSeen: Date.now() });
-
-    renderKanban(project);
-  });
+  renderKanban(project);
 }
 
 function renderUsers() {
@@ -461,9 +387,12 @@ function renderKanban(project) {
   const main = document.getElementById("main");
   main.innerHTML = tpl.innerHTML;
 
+  // Set online user (local only)
+  onlineUsers = [{ username: currentUser, online: true }];
+  renderUsers();
+
   setupKanbanToolbar(project);
   renderBoard();
-  renderUsers();
 
   document.getElementById("addTaskBtn").addEventListener("click", () => openTaskModal(null));
   document.getElementById("editColumnsBtn").addEventListener("click", () => openColumnsModal(project));
@@ -472,12 +401,10 @@ function renderKanban(project) {
 }
 
 function setupKanbanToolbar(project) {
-  // Assignee filter
   const assigneeSel = document.getElementById("filterAssignee");
   const allUsers = [...new Set(tasks.map((t) => t.assignee).filter(Boolean))];
   assigneeSel.innerHTML = `<option value="">Asignado</option>${allUsers.map((u) => `<option value="${u}">${u}</option>`).join("")}`;
 
-  // Tag filter
   const tagSel = document.getElementById("filterTag");
   const allTags = [...new Set(tasks.flatMap((t) => t.tags || []))];
   tagSel.innerHTML = `<option value="">Etiqueta</option>${allTags.map((t) => `<option value="${t}">${t}</option>`).join("")}`;
@@ -486,7 +413,6 @@ function setupKanbanToolbar(project) {
   document.getElementById("filterAssignee").addEventListener("change", applyFilters);
   document.getElementById("filterTag").addEventListener("change", applyFilters);
 
-  // WIP
   renderWip(project);
 }
 
@@ -522,7 +448,13 @@ function renderWip(project) {
 }
 
 // --- Board ---
+function refreshTasks() {
+  const data = readData();
+  if (currentProjectId) tasks = data.tasks[currentProjectId] || [];
+}
+
 function renderBoard() {
+  refreshTasks();
   const board = document.getElementById("board");
   if (!board) return;
   board.innerHTML = "";
@@ -573,7 +505,10 @@ function renderBoard() {
       const task = tasks.find((t) => t.id === tid);
       if (task && task.status !== colId) {
         const oldStatus = task.status;
-        fbDb.ref(`tasks/${currentProjectId}/${tid}`).update({ status: colId });
+        const data = readData();
+        const idx = (data.tasks[currentProjectId] || []).findIndex((t) => t.id === tid);
+        if (idx !== -1) data.tasks[currentProjectId][idx].status = colId;
+        writeData(data);
         task.status = colId;
         logActivity(currentProjectId, "move", tid, task.title, { from: oldStatus, to: colId });
         renderBoard();
@@ -683,6 +618,7 @@ function toggleView() {
 }
 
 function renderListView() {
+  refreshTasks();
   const container = document.getElementById("listView");
   if (!container || viewMode !== "list") return;
   const project = projects.find((p) => p.id === currentProjectId);
@@ -715,6 +651,8 @@ function renderListView() {
 // --- Task Modal ---
 function openTaskModal(task) {
   editingTaskId = task ? task.id : null;
+  refreshTasks();
+  if (task) task = tasks.find((t) => t.id === task.id) || task;
   const overlay = document.getElementById("modal-overlay") || createTaskModal();
   overlay.classList.remove("hidden");
 
@@ -728,14 +666,12 @@ function openTaskModal(task) {
   const modifiedBy = document.getElementById("modalModifiedBy");
   const deleteBtn = document.getElementById("deleteTaskBtn");
 
-  // Populate status
   const project = projects.find((p) => p.id === currentProjectId);
   const labels = project?.columnLabels || {};
   const cols = project?.columns || ["pending","in-progress","in-review","completed"];
   status.innerHTML = cols.map((c) => `<option value="${c}">${labels[c] || c}</option>`).join("");
 
-  // Populate assignee
-  const allUsers = [...new Set([...onlineUsers.map((u) => u.username), ...tasks.map((t) => t.assignee).filter(Boolean)])];
+  const allUsers = [...new Set([currentUser, ...tasks.map((t) => t.assignee).filter(Boolean)])];
   assignee.innerHTML = `<option value="">Sin asignar</option>${allUsers.map((u) => `<option value="${u}">${u}</option>`).join("")}`;
 
   if (task) {
@@ -793,12 +729,13 @@ function createTaskModal() {
     if (!ok) return;
     const delTask = tasks.find((t) => t.id === editingTaskId);
     const tid = editingTaskId;
-    const updates = {};
-    updates[`tasks/${currentProjectId}/${tid}`] = null;
-    updates[`comments/${currentProjectId}/${tid}`] = null;
-    updates[`checklists/${currentProjectId}/${tid}`] = null;
-    updates[`reactions/${currentProjectId}/${tid}`] = null;
-    await fbDb.ref().update(updates);
+    const data = readData();
+    if (data.tasks[currentProjectId])
+      data.tasks[currentProjectId] = data.tasks[currentProjectId].filter((t) => t.id !== tid);
+    delete data.comments?.[currentProjectId]?.[tid];
+    delete data.checklists?.[currentProjectId]?.[tid];
+    delete data.reactions?.[currentProjectId]?.[tid];
+    writeData(data);
     if (delTask) logActivity(currentProjectId, "delete", tid, delTask.title);
     closeTaskModal();
   });
@@ -825,7 +762,13 @@ function createTaskModal() {
     const input = document.getElementById("commentInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      fbDb.ref(`comments/${currentProjectId}/${editingTaskId}`).push({ text, user: currentUser, createdAt: now() });
+      const data = readData();
+      if (!data.comments[currentProjectId]) data.comments[currentProjectId] = {};
+      if (!data.comments[currentProjectId][editingTaskId]) data.comments[currentProjectId][editingTaskId] = [];
+      data.comments[currentProjectId][editingTaskId].push({ id: genId(), text, user: currentUser, createdAt: now() });
+      writeData(data);
+      comments[editingTaskId] = data.comments[currentProjectId][editingTaskId];
+      renderComments(editingTaskId);
       input.value = "";
     }
   });
@@ -836,7 +779,13 @@ function createTaskModal() {
     const input = document.getElementById("checklistInput");
     const text = input.value.trim();
     if (text && editingTaskId) {
-      fbDb.ref(`checklists/${currentProjectId}/${editingTaskId}`).push({ text, done: false });
+      const data = readData();
+      if (!data.checklists[currentProjectId]) data.checklists[currentProjectId] = {};
+      if (!data.checklists[currentProjectId][editingTaskId]) data.checklists[currentProjectId][editingTaskId] = [];
+      data.checklists[currentProjectId][editingTaskId].push({ id: genId(), text, done: false });
+      writeData(data);
+      checklists[editingTaskId] = data.checklists[currentProjectId][editingTaskId];
+      renderChecklist(editingTaskId);
       input.value = "";
     }
   });
@@ -875,6 +824,7 @@ function renderTags(tags) {
 function saveTask() {
   const title = document.getElementById("modalTitle").value.trim();
   if (!title) return;
+  refreshTasks();
   const body = {
     title,
     description: document.getElementById("modalDesc").value.trim(),
@@ -886,22 +836,23 @@ function saveTask() {
     lastModifiedBy: currentUser,
   };
 
+  const data = readData();
+  if (!data.tasks[currentProjectId]) data.tasks[currentProjectId] = [];
+
   if (editingTaskId) {
-    fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
+    const idx = data.tasks[currentProjectId].findIndex((t) => t.id === editingTaskId);
+    if (idx !== -1) Object.assign(data.tasks[currentProjectId][idx], body, { updatedAt: now() });
+    writeData(data);
     logActivity(currentProjectId, "edit", editingTaskId, body.title);
     closeTaskModal();
   } else {
-    const ref = fbDb.ref(`tasks/${currentProjectId}`).push();
-    ref.set({
-      ...body,
-      id: ref.key,
-      createdBy: currentUser,
-      projectId: currentProjectId,
-      createdAt: now(),
-      updatedAt: now(),
-      order: tasks.length,
+    const id = genId();
+    data.tasks[currentProjectId].push({
+      ...body, id, createdBy: currentUser, projectId: currentProjectId,
+      createdAt: now(), updatedAt: now(), order: data.tasks[currentProjectId].length,
     });
-    logActivity(currentProjectId, "create", ref.key, body.title);
+    writeData(data);
+    logActivity(currentProjectId, "create", id, body.title);
     closeTaskModal();
   }
 }
@@ -913,6 +864,7 @@ function autoSaveTask() {
     const title = document.getElementById("modalTitle").value.trim();
     if (!title) return;
     if (!editingTaskId) { saveTask(); return; }
+    refreshTasks();
     const body = {
       title,
       description: document.getElementById("modalDesc").value.trim(),
@@ -923,7 +875,12 @@ function autoSaveTask() {
       tags: getCurrentTags(),
       lastModifiedBy: currentUser,
     };
-    fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
+    const data = readData();
+    const idx = (data.tasks[currentProjectId] || []).findIndex((t) => t.id === editingTaskId);
+    if (idx !== -1) Object.assign(data.tasks[currentProjectId][idx], body, { updatedAt: now() });
+    writeData(data);
+    renderBoard();
+    renderListView();
   }, 800);
 }
 
@@ -931,13 +888,13 @@ function saveTaskSilent(extra) {
   if (!editingTaskId) return;
   const title = document.getElementById("modalTitle").value.trim();
   if (!title) return;
-  const body = {
-    title,
-    tags: getCurrentTags(),
-    lastModifiedBy: currentUser,
-    ...extra,
-  };
-  fbDb.ref(`tasks/${currentProjectId}/${editingTaskId}`).update({ ...body, updatedAt: now() });
+  const body = { title, tags: getCurrentTags(), lastModifiedBy: currentUser, ...extra };
+  const data = readData();
+  const idx = (data.tasks[currentProjectId] || []).findIndex((t) => t.id === editingTaskId);
+  if (idx !== -1) Object.assign(data.tasks[currentProjectId][idx], body, { updatedAt: now() });
+  writeData(data);
+  renderBoard();
+  renderListView();
 }
 
 function closeTaskModal() {
@@ -951,7 +908,9 @@ function closeTaskModal() {
 
 // --- Comments ---
 function loadComments(taskId) {
-  listenComments(taskId);
+  const data = readData();
+  comments[taskId] = data.comments?.[currentProjectId]?.[taskId] || [];
+  renderComments(taskId);
 }
 
 function renderComments(taskId) {
@@ -971,7 +930,9 @@ function renderComments(taskId) {
 
 // --- Checklists ---
 function loadChecklist(taskId) {
-  listenChecklist(taskId);
+  const data = readData();
+  checklists[taskId] = data.checklists?.[currentProjectId]?.[taskId] || [];
+  renderChecklist(taskId);
 }
 
 function renderChecklist(taskId) {
@@ -989,22 +950,33 @@ function renderChecklist(taskId) {
     : "";
   container.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     cb.addEventListener("change", () => {
-      const item = (checklists[taskId] || []).find((i) => i.id === cb.dataset.id);
-      if (item) {
-        fbDb.ref(`checklists/${currentProjectId}/${taskId}/${cb.dataset.id}`).update({ done: cb.checked });
-      }
+      const data = readData();
+      const items = data.checklists?.[currentProjectId]?.[taskId] || [];
+      const item = items.find((i) => i.id === cb.dataset.id);
+      if (item) item.done = cb.checked;
+      writeData(data);
+      checklists[taskId] = items;
     });
   });
   container.querySelectorAll(".check-del").forEach((btn) => {
     btn.addEventListener("click", () => {
-      fbDb.ref(`checklists/${currentProjectId}/${taskId}/${btn.dataset.id}`).remove();
+      const data = readData();
+      const items = (data.checklists?.[currentProjectId]?.[taskId] || []).filter((i) => i.id !== btn.dataset.id);
+      if (data.checklists[currentProjectId]) data.checklists[currentProjectId][taskId] = items;
+      writeData(data);
+      checklists[taskId] = items;
+      renderChecklist(taskId);
     });
   });
 }
 
 // --- Reactions ---
 function renderReactionsForCard(taskId) {
-  listenReactions(taskId);
+  const container = document.getElementById(`reactions-${taskId}`);
+  if (!container) return;
+  const data = readData();
+  reactions[taskId] = data.reactions?.[currentProjectId]?.[taskId] || {};
+  renderReactions(taskId);
 }
 
 function renderReactions(taskId) {
@@ -1023,11 +995,18 @@ function renderReactions(taskId) {
     btn.addEventListener("click", () => {
       const emoji = btn.dataset.emoji;
       const tId = btn.dataset.task;
-      const ref = fbDb.ref(`reactions/${currentProjectId}/${tId}/${emoji}/${currentUser}`);
-      ref.once("value").then(snap => {
-        if (snap.val()) ref.remove();
-        else ref.set(true);
-      });
+      const data = readData();
+      if (!data.reactions[currentProjectId]) data.reactions[currentProjectId] = {};
+      if (!data.reactions[currentProjectId][tId]) data.reactions[currentProjectId][tId] = {};
+      const users = data.reactions[currentProjectId][tId][emoji] || [];
+      const idx = users.indexOf(currentUser);
+      if (idx === -1) users.push(currentUser);
+      else users.splice(idx, 1);
+      if (users.length === 0) delete data.reactions[currentProjectId][tId][emoji];
+      else data.reactions[currentProjectId][tId][emoji] = users;
+      writeData(data);
+      reactions[tId] = data.reactions[currentProjectId][tId];
+      renderReactions(tId);
     });
   });
 }
@@ -1043,10 +1022,10 @@ function openColumnsModal(project) {
   const overlay = document.getElementById("columnsOverlay");
   overlay.classList.remove("hidden");
 
-    const list = document.getElementById("columnsList");
-  const cols = project.columns || ["pending","in-progress","in-review","completed"];
-  const labels = project.columnLabels || {};
-  const colors = project.columnColors || {};
+  const list = document.getElementById("columnsList");
+  const cols = [...(project.columns || ["pending","in-progress","in-review","completed"])];
+  const labels = { ...(project.columnLabels || {}) };
+  const colors = { ...(project.columnColors || {}) };
   const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
 
   function renderCols() {
@@ -1086,15 +1065,13 @@ function openColumnsModal(project) {
   document.getElementById("closeColumns").addEventListener("click", () => overlay.remove());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 
-  document.getElementById("saveColumnsBtn").addEventListener("click", async () => {
+  document.getElementById("saveColumnsBtn").addEventListener("click", () => {
     const newCols = [];
     const newLabels = {};
     const newWip = {};
     const newColors = {};
-    const palette = ["#58a6ff","#d29922","#bc8cff","#3fb950","#db61a2","#39d2c0","#f0883e","#e6edf3"];
-    const snap = await fbDb.ref(`projects/${currentProjectId}`).once("value");
-    const proj = snap.val() || {};
-    const existingColors = proj.columnColors || {};
+    const data = readData();
+    const existingColors = data.projects[currentProjectId]?.columnColors || {};
     list.querySelectorAll(".col-edit-item").forEach((item, i) => {
       const key = item.querySelector(".col-key").value.trim();
       const label = item.querySelector(".col-label").value.trim();
@@ -1106,41 +1083,32 @@ function openColumnsModal(project) {
         if (wip > 0) newWip[key] = wip;
       }
     });
-    // Migrate orphaned tasks to first column
-    const oldCols = proj.columns || [];
-    const removedCols = oldCols.filter((c) => !newCols.includes(c));
-    const firstCol = newCols[0] || "pending";
-    if (removedCols.length > 0) {
-      const taskSnap = await fbDb.ref(`tasks/${currentProjectId}`).once("value");
-      const allTasks = taskSnap.val() || {};
-      const taskUpdates = {};
-      Object.keys(allTasks).forEach(tid => {
-        if (removedCols.includes(allTasks[tid].status)) {
-          taskUpdates[`tasks/${currentProjectId}/${tid}/status`] = firstCol;
-        }
+    if (data.projects[currentProjectId]) {
+      const oldCols = data.projects[currentProjectId].columns || [];
+      const removedCols = oldCols.filter((c) => !newCols.includes(c));
+      const firstCol = newCols[0] || "pending";
+      (data.tasks[currentProjectId] || []).forEach((t) => {
+        if (removedCols.includes(t.status)) t.status = firstCol;
       });
-      if (Object.keys(taskUpdates).length > 0) await fbDb.ref().update(taskUpdates);
+      Object.assign(data.projects[currentProjectId], { columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip });
+      writeData(data);
     }
-    await fbDb.ref(`projects/${currentProjectId}`).update({
-      columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip,
-    });
     overlay.remove();
     openProject(currentProjectId);
   });
 }
 
 // --- Export ---
-async function exportProject() {
-  const snap = await fbDb.ref().once("value");
-  const all = snap.val() || {};
-  const data = {
-    project: all.projects?.[currentProjectId],
-    tasks: all.tasks?.[currentProjectId] || [],
-    comments: all.comments?.[currentProjectId] || {},
-    checklists: all.checklists?.[currentProjectId] || {},
-    reactions: all.reactions?.[currentProjectId] || {},
+function exportProject() {
+  const data = readData();
+  const exportData = {
+    project: data.projects[currentProjectId],
+    tasks: data.tasks[currentProjectId] || [],
+    comments: data.comments[currentProjectId] || {},
+    checklists: data.checklists[currentProjectId] || {},
+    reactions: data.reactions[currentProjectId] || {},
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -1231,20 +1199,18 @@ function toggleActivity() {
 function renderActivity() {
   const container = document.getElementById("activityList");
   if (!container) return;
-  fbDb.ref(`activity/${currentProjectId}`).orderByChild("timestamp").limitToLast(100).once("value", snap => {
-    const data = snap.val() || {};
-    const items = Object.keys(data).map(k => data[k]).reverse();
-    container.innerHTML = items.map((a) => {
-      const typeMap = { create: "creó", move: "movió", edit: "editó" };
-      const detail = a.from && a.to
-        ? ` de "${a.from}" a "${a.to}"`
-        : "";
-      return `<div class="activity-item">
-        <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.taskTitle)}"${detail}
-        <span class="at-time">${timeAgo(a.timestamp)}</span>
-      </div>`;
-    }).join("");
-  });
+  const data = readData();
+  activity = data.activity?.[currentProjectId] || [];
+  container.innerHTML = activity.map((a) => {
+    const typeMap = { create: "creó", move: "movió", edit: "editó" };
+    const detail = a.from && a.to
+      ? ` de "${a.from}" a "${a.to}"`
+      : "";
+    return `<div class="activity-item">
+      <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.taskTitle)}"${detail}
+      <span class="at-time">${timeAgo(a.timestamp)}</span>
+    </div>`;
+  }).join("");
 }
 
 // Check for activity button click
