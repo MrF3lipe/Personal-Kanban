@@ -213,6 +213,27 @@ function showConfirm(title, message, btnText) {
   });
 }
 
+function showPrompt(title, placeholder, okText) {
+  return new Promise((resolve) => {
+    const old = document.getElementById("promptOverlay");
+    if (old) old.remove();
+    const tpl = document.getElementById("promptDialog");
+    document.body.appendChild(tpl.content.cloneNode(true));
+    const overlay = document.getElementById("promptOverlay");
+    document.getElementById("promptTitle").textContent = title;
+    document.getElementById("promptInput").placeholder = placeholder || "";
+    document.getElementById("promptOk").textContent = okText || "Aceptar";
+    overlay.classList.remove("hidden");
+    document.getElementById("promptInput").focus();
+    document.getElementById("promptInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { overlay.remove(); resolve(document.getElementById("promptInput").value); }
+    });
+    document.getElementById("promptCancel").addEventListener("click", () => { overlay.remove(); resolve(null); });
+    document.getElementById("promptOk").addEventListener("click", () => { overlay.remove(); resolve(document.getElementById("promptInput").value); });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
 function renderProjects() {
   const tpl = document.getElementById("projectsView");
   const main = document.getElementById("main");
@@ -291,9 +312,9 @@ function renderProjects() {
 
   // Create project with custom ID
   document.getElementById("newProjectBtn").addEventListener("click", async () => {
-    const name = prompt("Nombre del proyecto:");
+    const name = await showPrompt("Nombre del proyecto", "Ej: Mi Proyecto", "Continuar");
     if (!name || !name.trim()) return;
-    const customId = prompt("ID del proyecto (déjalo vacío para generar uno automático):");
+    const customId = await showPrompt("ID del proyecto (vacío = automático)", "mi-proyecto", "Continuar");
     let id;
     if (customId && customId.trim()) {
       id = customId.trim().toLowerCase().replace(/\s+/g, "-");
@@ -305,7 +326,7 @@ function renderProjects() {
     } else {
       id = fbDb.ref("projects").push().key;
     }
-    const password = prompt("Clave del proyecto (dejar vacío para público):") || "";
+    const password = await showPrompt("Clave del proyecto (vacío = público)", "opcional", "Crear proyecto") || "";
     await fbDb.ref(`projects/${id}`).set({
       id, name: name.trim(), password,
       columns: ["pending","in-progress","in-review","completed"],
@@ -730,6 +751,7 @@ function openTaskModal(task) {
     renderTags(task.tags || []);
     loadComments(task.id);
     loadChecklist(task.id);
+    document.getElementById("modalSaveBtn").textContent = "Guardar cambios";
   } else {
     title.value = "";
     desc.value = "";
@@ -743,6 +765,7 @@ function openTaskModal(task) {
     document.getElementById("modalTags").innerHTML = "";
     document.getElementById("modalComments").innerHTML = "";
     document.getElementById("modalChecklist").innerHTML = "";
+    document.getElementById("modalSaveBtn").textContent = "Crear tarea";
   }
 
   title.focus();
@@ -755,6 +778,8 @@ function createTaskModal() {
   const overlay = document.getElementById("modal-overlay");
 
   document.getElementById("modalClose").addEventListener("click", () => closeTaskModal());
+  document.getElementById("modalCancelBtn").addEventListener("click", () => closeTaskModal());
+  document.getElementById("modalSaveBtn").addEventListener("click", () => saveTask());
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeTaskModal(); });
 
   // Save on Enter (title)

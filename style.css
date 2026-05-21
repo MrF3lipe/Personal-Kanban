@@ -553,6 +553,11 @@ header {
 }
 .modal-priority-group select:focus, .modal-status-group select:focus { border-color: var(--accent); }
 .modal-body { display: flex; gap: 0; flex: 1; overflow: hidden; }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 12px 20px; border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
 .modal-main {
   flex: 1; padding: 20px 22px; overflow-y: auto; min-width: 0;
 }

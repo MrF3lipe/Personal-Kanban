@@ -169,6 +169,10 @@
             <button id="deleteTaskBtn" class="btn-danger btn-full">Eliminar tarea</button>
           </div>
         </div>
+        <div class="modal-footer">
+          <button id="modalCancelBtn" class="btn-ghost">Cancelar</button>
+          <button id="modalSaveBtn" class="btn-primary">Crear tarea</button>
+        </div>
       </div>
     </div>
   </template>
@@ -183,6 +187,21 @@
         <div class="confirm-actions">
           <button id="confirmCancel" class="btn-ghost">Cancelar</button>
           <button id="confirmOk" class="btn-danger">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Prompt Dialog -->
+  <template id="promptDialog">
+    <div class="overlay hidden" id="promptOverlay">
+      <div class="modal-card modal-sm confirm-card">
+        <div class="confirm-icon" id="promptIcon">✏️</div>
+        <h3 id="promptTitle" class="confirm-title">Ingresa un valor</h3>
+        <input type="text" id="promptInput" placeholder="" class="modal-title-input" style="margin-bottom:0" />
+        <div class="confirm-actions" style="margin-top:20px">
+          <button id="promptCancel" class="btn-ghost">Cancelar</button>
+          <button id="promptOk" class="btn-primary">Aceptar</button>
         </div>
       </div>
     </div>
