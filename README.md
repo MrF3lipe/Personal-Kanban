@@ -1,9 +1,10 @@
 # ⊞ Kanban
 
-Tablero Kanban con arrastrar y soltar, múltiples proyectos, filtros, búsqueda, checklists, comentarios, reacciones, y protección por clave.
+Tablero Kanban con arrastrar y soltar, múltiples proyectos, **colaboración en tiempo real**, filtros, búsqueda, checklists, comentarios, reacciones, y protección por clave.
 
 ## ✨ Características
 
+- **👥 Tiempo real** — Varios usuarios colaboran simultáneamente; los cambios se sincronizan al instante
 - **📋 Arrastrar y soltar** — Mueve tareas entre columnas (ratón y táctil)
 - **🔐 Proyectos con clave** — Cada proyecto tiene clave opcional; comparte ID + clave para colaborar
 - **🆔 ID personalizado** — Al crear proyecto puedes elegir tu propio ID (sin duplicados)
@@ -20,17 +21,48 @@ Tablero Kanban con arrastrar y soltar, múltiples proyectos, filtros, búsqueda,
 - **📦 Exportar/Importar** — Descarga proyectos como JSON o impórtalos
 - **⌨️ Atajos** — `N` nueva tarea, `B` cambiar vista, `F` buscar, `Esc` cerrar, `?` ayuda
 - **📱 Responsive** — Funciona en escritorio, tablet y móvil
-- **💾 100% local** — Sin servidor, sin conexión externa. Todo se guarda en localStorage.
 
 ## 🖥️ Diseño
 
 Vidrio oscuro con gradientes animados de fondo, tipografía **DM Sans** + **Syne**, animaciones escalonadas, columnas con brillo degradado y una estética *cyber-glass* coherente.
 
-## 🚀 Inicio rápido
+## 🚀 Configuración de Supabase
 
-Abre `index.html` en tu navegador. No necesita instalación ni servidor.
+Necesitas una cuenta gratuita en [supabase.com](https://supabase.com).
 
-O visítalo online: **https://mrf3lipe.github.io/Personal-Kanban/**
+### 1. Crear proyecto
+
+1. Ve a [supabase.com](https://supabase.com) e inicia sesión
+2. Crea un nuevo proyecto (elige una región cercana)
+3. Espera a que termine la creación de la base de datos (~2 minutos)
+
+### 2. Ejecutar schema SQL
+
+1. En el panel de Supabase, ve a **SQL Editor**
+2. Haz clic en **New Query**
+3. Copia y pega todo el contenido de [`supabase-schema.sql`](./supabase-schema.sql)
+4. Haz clic en **Run** para crear las tablas
+
+### 3. Configurar la app
+
+1. En el panel de Supabase, ve a **Project Settings → API**
+2. Copia la **Project URL** y la **anon public key**
+3. Abre [`supabase-config.js`](./supabase-config.js) y reemplaza los valores:
+
+```js
+const SUPABASE_URL = "https://TU_PROYECTO.supabase.co"
+const SUPABASE_ANON_KEY = "tu-anon-key-aqui"
+```
+
+### 4. Habilitar Realtime
+
+Ve a **Database → Replication** y asegúrate de que las tablas `projects`, `tasks`, `comments`, `checklists`, `reactions` y `activity` están publicadas en `supabase_realtime` (ya se configura automáticamente con el SQL anterior).
+
+### 5. Abrir la app
+
+Abre `index.html` en tu navegador o súbela a GitHub Pages. La URL de GitHub Pages accesible desde Cuba:
+
+**https://mrf3lipe.github.io/Personal-Kanban/**
 
 ### Crear un proyecto
 
@@ -48,35 +80,30 @@ O visítalo online: **https://mrf3lipe.github.io/Personal-Kanban/**
 
 ## ☁️ Despliegue
 
-La app es **100% estática**. Súbela a GitHub Pages, Netlify, Vercel, o cualquier hosting estático:
+Súbela a GitHub Pages, Netlify, Vercel, o cualquier hosting estático:
 
 1. Sube el código a un repo de GitHub
 2. **Settings → Pages → Source**: "Deploy from a branch"
 3. Branch: `main`, folder: `/ (root)`
 4. Listo
 
-Todos los datos se guardan en el navegador (localStorage). Sin servidor, sin backend, sin cuenta.
-
 ## 🗂️ Estructura
 
 ```
 kanban/
-├── index.html          # SPA completo con templates HTML
-├── style.css           # Tema cyber-glass (oscuro/claro)
-├── app.js              # Toda la lógica (localStorage)
+├── index.html              # SPA completo con templates HTML
+├── style.css               # Tema cyber-glass (oscuro/claro)
+├── app.js                  # Toda la lógica (cliente Supabase)
+├── supabase-config.js      # Configuración de Supabase
+├── supabase-schema.sql     # Schema SQL para ejecutar en Supabase
 └── README.md
 ```
-
-Sin dependencias externas. Sin Firebase, sin Node.js, sin build.
 
 ## 🔧 Stack
 
 | Capa       | Tecnología                          |
 |------------|-------------------------------------|
 | Frontend   | HTML5 + CSS3 + JavaScript (ES2024)  |
-| Datos      | localStorage                        |
+| Base de datos | Supabase (PostgreSQL)            |
+| Tiempo real | Supabase Realtime + Presence       |
 | Hosting    | GitHub Pages (o cualquier estático) |
-
-## 📄 Licencia
-
-MIT
