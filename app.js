@@ -547,8 +547,10 @@ function renderBoard() {
 
     colTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    colTasks.forEach((task) => {
-      body.appendChild(createCard(task));
+    colTasks.forEach((task, i) => {
+      const card = createCard(task);
+      card.style.setProperty("--i", i);
+      body.appendChild(card);
       renderReactionsForCard(task.id);
     });
 
