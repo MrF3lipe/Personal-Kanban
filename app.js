@@ -5,7 +5,6 @@
 // --- Firebase ---
 firebase.initializeApp(firebaseConfig);
 const fbDb = firebase.database();
-const fbAuth = firebase.auth();
 
 // --- State ---
 let currentUser = localStorage.getItem("kanban_user") || "";
@@ -88,15 +87,8 @@ function listenPresence(pid) {
 }
 
 // --- Auth ---
-function ensureSignedIn() {
-  return new Promise(resolve => {
-    if (fbAuth.currentUser) return resolve(fbAuth.currentUser);
-    const unsub = fbAuth.onAuthStateChanged(user => {
-      if (unsub) unsub();
-      resolve(user);
-    });
-  });
-}
+// No Firebase auth needed — simple username system.
+// Database rules should allow public read/write.
 
 // --- Helpers ---
 function now() { return new Date().toISOString(); }
@@ -115,8 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initRouting();
   initThemeToggle();
   initKeyboard();
-
-  fbAuth.signInAnonymously().catch(console.error);
 
   if (currentUser) {
     document.getElementById("app").classList.remove("hidden");
@@ -155,8 +145,6 @@ function initLogin() {
       document.getElementById("userBadge").textContent = name;
       document.getElementById("loginScreen").classList.add("hidden");
       document.getElementById("app").classList.remove("hidden");
-      // Ensure anonymous auth is signed in
-      if (!fbAuth.currentUser) await fbAuth.signInAnonymously();
       loadProjects();
     }
   });
