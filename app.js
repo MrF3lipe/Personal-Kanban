@@ -1,10 +1,6 @@
 /* ============================================================
-   Kanban v3 — Frontend App (Supabase)
+   Kanban v3 — Frontend App (Local Server)
    ============================================================ */
-
-// --- Supabase Client ---
-const { createClient } = supabase
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // --- State ---
 let currentUser = localStorage.getItem("kanban_user") || ""
@@ -20,6 +16,7 @@ let onlineUsers = []
 let activeFilters = { priority: "", assignee: "", tag: "" }
 let viewMode = "board"
 let sbChannel = null
+let localServer = false
 
 // --- Helpers ---
 function now() { return new Date().toISOString() }
@@ -27,84 +24,82 @@ const paleta = ["#58a6ff","#3fb950","#d29922","#bc8cff","#db61a2","#39d2c0","#f8
 
 // --- Data Layer ---
 async function loadProjects() {
-  const { data } = await sb.from("projects").select("*").order("created_at", { ascending: false })
-  projects = data || []
+  try {
+    const data = await API.getProjects()
+    projects = data || []
+  } catch (e) {
+    console.error("Error loading projects:", e)
+    projects = []
+  }
   renderProjects()
 }
 
 async function loadProject(pid) {
-  const { data } = await sb.from("projects").select("*").eq("id", pid).single()
-  if (data) {
-    const idx = projects.findIndex(p => p.id === pid)
-    if (idx >= 0) projects[idx] = data
-    else projects.push(data)
+  try {
+    const data = await API.getProject(pid)
+    if (data) {
+      const idx = projects.findIndex(p => p.id === pid)
+      if (idx >= 0) projects[idx] = data
+      else projects.push(data)
+    }
+    return data
+  } catch (e) {
+    console.error("Error loading project:", e)
+    return null
   }
-  return data
 }
 
 async function refreshTasks() {
   if (!currentProjectId) return
-  const { data } = await sb.from("tasks").select("*").eq("project_id", currentProjectId).order("order")
-  tasks = data || []
+  try {
+    const data = await API.getTasks(currentProjectId)
+    tasks = data || []
+  } catch (e) {
+    console.error("Error refreshing tasks:", e)
+  }
 }
 
 async function logActivity(pid, type, taskId, taskTitle, extra) {
-  await sb.from("activity").insert({
-    project_id: pid, type, task_id: taskId || "", task_title: taskTitle || "",
-    user: currentUser, from: extra?.from || "", to: extra?.to || "",
-  })
+  // El server ya registra actividad automáticamente
 }
 
-// --- Realtime ---
+// --- Realtime (Socket.IO) ---
 function subscribeToProject(pid) {
   unsubscribeFromProject()
-  sbChannel = sb.channel(`kanban-${pid}`)
-  sbChannel.on("presence", { event: "sync" }, () => {
-    const state = sbChannel.presenceState()
-    onlineUsers = Object.values(state).flatMap(v => v)
-    renderUsers()
-  })
-  sbChannel.on("postgres_changes",
-    { event: "*", schema: "public", table: "tasks", filter: `project_id=eq.${pid}` },
-    async () => {
-      await refreshTasks()
+  API.subscribe(pid, {
+    onTasks: async (data) => {
+      tasks = data || []
       renderBoard()
       renderListView()
       renderWipForCurrent()
-    }
-  )
-  sbChannel.on("postgres_changes",
-    { event: "*", schema: "public", table: "comments", filter: `project_id=eq.${pid}` },
-    () => { if (editingTaskId) loadComments(editingTaskId) }
-  )
-  sbChannel.on("postgres_changes",
-    { event: "*", schema: "public", table: "checklists", filter: `project_id=eq.${pid}` },
-    () => { if (editingTaskId) loadChecklist(editingTaskId) }
-  )
-  sbChannel.on("postgres_changes",
-    { event: "*", schema: "public", table: "reactions", filter: `project_id=eq.${pid}` },
-    async () => {
+    },
+    onComments: ({ taskId: tid, comments: cmts }) => {
+      comments[tid] = cmts || []
+      if (editingTaskId === tid) renderComments(tid)
+    },
+    onChecklist: ({ taskId: tid, checklist: chk }) => {
+      checklists[tid] = chk || []
+      if (editingTaskId === tid) renderChecklist(tid)
+    },
+    onReactions: async () => {
       await refreshTasks()
       renderBoard()
-    }
-  )
-  sbChannel.subscribe(async (status) => {
-    if (status === "SUBSCRIBED") {
-      await sbChannel.track({ username: currentUser, online: true, joined_at: now() })
-    }
+    },
+    onUsers: (users) => {
+      onlineUsers = users || []
+      renderUsers()
+    },
   })
 }
 
 function unsubscribeFromProject() {
-  if (sbChannel) {
-    sbChannel.unsubscribe()
-    sbChannel = null
-  }
+  API.unsubscribe()
 }
 
 // --- Init ---
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   document.documentElement.setAttribute("data-theme", theme)
+  await API.init()
   initLogin()
   initRouting()
   initThemeToggle()
@@ -114,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("app").classList.remove("hidden")
     document.getElementById("loginScreen").classList.add("hidden")
     document.getElementById("userBadge").textContent = currentUser
-    loadProjects()
+    await loadProjects()
     const hash = window.location.hash.slice(1)
     if (hash) handleRoute()
   } else {
@@ -238,7 +233,7 @@ function renderProjects() {
   let hasJoined = false
 
   projects.forEach((p) => {
-    if (!joinedIds.has(p.id) && p.created_by !== currentUser) return
+    if (!joinedIds.has(p.id) && p.createdBy !== currentUser) return
     hasJoined = true
     const card = document.getElementById("projectCard").content.cloneNode(true)
     const div = card.querySelector(".project-card")
@@ -258,7 +253,7 @@ function renderProjects() {
       })
     })
 
-    if (p.created_by !== currentUser) {
+    if (p.createdBy !== currentUser) {
       div.querySelector(".project-delete").classList.add("hidden")
     } else {
       div.querySelector(".project-delete").addEventListener("click", async (e) => {
@@ -266,18 +261,14 @@ function renderProjects() {
         e.stopImmediatePropagation()
         const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar")
         if (!ok) return
-        const pid = p.id
-        await Promise.all([
-          sb.from("comments").delete().eq("project_id", pid),
-          sb.from("checklists").delete().eq("project_id", pid),
-          sb.from("reactions").delete().eq("project_id", pid),
-          sb.from("activity").delete().eq("project_id", pid),
-          sb.from("tasks").delete().eq("project_id", pid),
-          sb.from("projects").delete().eq("id", pid),
-        ])
-        delete joined[pid]
-        saveJoined(joined)
-        loadProjects()
+        try {
+          await API.deleteProject(p.id)
+          delete joined[p.id]
+          saveJoined(joined)
+          loadProjects()
+        } catch (err) {
+          alert("Error al eliminar: " + err.message)
+        }
       })
     }
 
@@ -303,7 +294,7 @@ function renderProjects() {
     let id
     if (customId && customId.trim()) {
       id = customId.trim().toLowerCase().replace(/\s+/g, "-")
-      const { data: existing } = await sb.from("projects").select("id").eq("id", id).maybeSingle()
+      const existing = projects.find((p) => p.id === id)
       if (existing) {
         alert(`El ID "${id}" ya existe. Usa otro o déjalo vacío para generar uno automático.`)
         return
@@ -312,18 +303,21 @@ function renderProjects() {
       id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
     }
     const password = await showPrompt("Clave del proyecto (vacío = público)", "opcional", "Crear proyecto") || ""
-    const { error } = await sb.from("projects").insert({
-      id, name: name.trim(), password,
-      columns: ["pending","in-progress","in-review","completed"],
-      column_labels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
-      column_colors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
-      wip_limits: {},
-      created_by: currentUser,
-    })
-    if (error) { alert("Error al crear proyecto: " + error.message); return }
-    joined[id] = password
-    saveJoined(joined)
-    navigate(`/project/${id}`)
+    try {
+      await API.createProject({
+        id, name: name.trim(), password,
+        columns: ["pending","in-progress","in-review","completed"],
+        column_labels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
+        column_colors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
+        wip_limits: {},
+        created_by: currentUser,
+      })
+      joined[id] = password
+      saveJoined(joined)
+      navigate(`/project/${id}`)
+    } catch (err) {
+      alert("Error al crear proyecto: " + err.message)
+    }
   })
 
   document.getElementById("joinForm").addEventListener("submit", async (e) => {
@@ -331,13 +325,13 @@ function renderProjects() {
     const id = document.getElementById("joinId").value.trim()
     const password = document.getElementById("joinPassword").value
     const errEl = document.getElementById("joinError")
-    const { data: proj } = await sb.from("projects").select("*").eq("id", id).maybeSingle()
-    if (proj && (!proj.password || proj.password === password)) {
+    try {
+      const proj = await API.verifyProject(id, password)
       joined[id] = password
       saveJoined(joined)
       errEl.classList.add("hidden")
       navigate(`/project/${id}`)
-    } else {
+    } catch {
       errEl.textContent = "ID o clave incorrectos"
       errEl.classList.remove("hidden")
     }
@@ -356,26 +350,25 @@ function renderProjects() {
         for (const item of items) {
           const p = item.project || item
           const pid = p.id || (Date.now().toString(36) + Math.random().toString(36).substr(2, 9))
-          const cols = p.columns || p.project?.columns || ["pending","in-progress","in-review","completed"]
-          await sb.from("projects").insert({
+          const cols = p.columns || ["pending","in-progress","in-review","completed"]
+          await API.createProject({
             id: pid,
-            name: p.name || p.project?.name || "Importado",
-            description: p.description || p.project?.description || "",
+            name: p.name || "Importado",
+            description: p.description || "",
             password: p.password || "",
             columns: cols,
-            column_labels: p.column_labels || p.columnLabels || p.project?.column_labels || p.project?.columnLabels || {},
-            column_colors: p.column_colors || p.columnColors || p.project?.column_colors || p.project?.columnColors || {},
-            wip_limits: p.wip_limits || p.wipLimits || p.project?.wip_limits || p.project?.wipLimits || {},
+            column_labels: p.column_labels || p.columnLabels || {},
+            column_colors: p.column_colors || p.columnColors || {},
+            wip_limits: p.wip_limits || p.wipLimits || {},
             created_by: currentUser,
           })
           const importTasks = item.tasks || []
           for (const t of importTasks) {
-            await sb.from("tasks").insert({
-              project_id: pid, title: t.title || "Tarea", description: t.description || "",
+            await API.createTask(pid, {
+              title: t.title || "Tarea", description: t.description || "",
               priority: t.priority || "p3", status: t.status || cols[0],
               assignee: t.assignee || "", deadline: t.deadline || null,
               tags: t.tags || [], created_by: currentUser,
-              order: t.order || 0,
             })
           }
         }
@@ -543,12 +536,14 @@ function renderBoard() {
       const tid = e.dataTransfer.getData("text/plain")
       const task = tasks.find((t) => t.id === tid)
       if (task && task.status !== colId) {
-        const oldStatus = task.status
-        await sb.from("tasks").update({ status: colId, updated_at: now(), last_modified_by: currentUser }).eq("id", tid)
-        await logActivity(currentProjectId, "move", tid, task.title, { from: oldStatus, to: colId })
-        await refreshTasks()
-        renderBoard()
-        renderListView()
+        try {
+          await API.updateTask(currentProjectId, tid, { status: colId, updatedAt: now() })
+          await refreshTasks()
+          renderBoard()
+          renderListView()
+        } catch (err) {
+          console.error("Error moving task:", err)
+        }
       }
     })
 
@@ -583,7 +578,7 @@ function createCard(task) {
     ${tagsHtml}
     ${deadlineHtml}
     <div class="card-meta">
-      <span class="card-user">${task.created_by ? esc(task.created_by) : ""}</span>
+      <span class="card-user">${task.createdBy ? esc(task.createdBy) : ""}</span>
       ${task.assignee ? `<span class="card-assignee">${esc(task.assignee)}</span>` : ""}
     </div>
     <div id="reactions-${task.id}" class="reactions-row"></div>
@@ -714,8 +709,8 @@ async function openTaskModal(task) {
     status.value = task.status || "pending"
     assignee.value = task.assignee || ""
     deadline.value = task.deadline ? task.deadline.split("T")[0] : ""
-    createdBy.textContent = `Creado por ${task.created_by || "?"}`
-    modifiedBy.textContent = `Última modificación: ${task.last_modified_by || "—"}`
+    createdBy.textContent = `Creado por ${task.createdBy || "?"}`
+    modifiedBy.textContent = `Última modificación: ${task.lastModifiedBy || "—"}`
     deleteBtn.classList.remove("hidden")
     renderTags(task.tags || [])
     loadComments(task.id)
@@ -761,15 +756,13 @@ function createTaskModal() {
     if (!ok) return
     const tid = editingTaskId
     const delTask = tasks.find((t) => t.id === tid)
-    await Promise.all([
-      sb.from("comments").delete().eq("project_id", currentProjectId).eq("task_id", tid),
-      sb.from("checklists").delete().eq("project_id", currentProjectId).eq("task_id", tid),
-      sb.from("reactions").delete().eq("project_id", currentProjectId).eq("task_id", tid),
-      sb.from("tasks").delete().eq("id", tid),
-    ])
-    if (delTask) await logActivity(currentProjectId, "delete", tid, delTask.title)
-    await refreshTasks()
-    closeTaskModal()
+    try {
+      await API.deleteTask(currentProjectId, tid)
+      await refreshTasks()
+      closeTaskModal()
+    } catch (err) {
+      alert("Error al eliminar: " + err.message)
+    }
   })
 
   document.getElementById("addTagBtn").addEventListener("click", () => {
@@ -792,12 +785,13 @@ function createTaskModal() {
     const input = document.getElementById("commentInput")
     const text = input.value.trim()
     if (text && editingTaskId) {
-      await sb.from("comments").insert({
-        project_id: currentProjectId, task_id: editingTaskId,
-        text, user: currentUser,
-      })
-      await loadComments(editingTaskId)
-      input.value = ""
+      try {
+        await API.createComment(currentProjectId, editingTaskId, { text, user: currentUser })
+        await loadComments(editingTaskId)
+        input.value = ""
+      } catch (err) {
+        console.error("Error adding comment:", err)
+      }
     }
   })
 
@@ -806,12 +800,13 @@ function createTaskModal() {
     const input = document.getElementById("checklistInput")
     const text = input.value.trim()
     if (text && editingTaskId) {
-      await sb.from("checklists").insert({
-        project_id: currentProjectId, task_id: editingTaskId,
-        text, done: false,
-      })
-      await loadChecklist(editingTaskId)
-      input.value = ""
+      try {
+        await API.createChecklistItem(currentProjectId, editingTaskId, { text })
+        await loadChecklist(editingTaskId)
+        input.value = ""
+      } catch (err) {
+        console.error("Error adding checklist item:", err)
+      }
     }
   })
 
@@ -857,23 +852,20 @@ async function saveTask() {
     assignee: document.getElementById("modalAssignee").value,
     deadline: document.getElementById("modalDeadline").value || null,
     tags: getCurrentTags(),
-    last_modified_by: currentUser,
   }
 
-  if (editingTaskId) {
-    await sb.from("tasks").update({ ...body, updated_at: now() }).eq("id", editingTaskId)
-    await logActivity(currentProjectId, "edit", editingTaskId, body.title)
-    closeTaskModal()
-  } else {
-    const { data } = await sb.from("tasks").insert({
-      ...body, project_id: currentProjectId,
-      created_by: currentUser, created_at: now(), updated_at: now(),
-      order: tasks.length,
-    }).select()
-    if (data && data[0]) {
-      await logActivity(currentProjectId, "create", data[0].id, body.title)
+  try {
+    if (editingTaskId) {
+      await API.updateTask(currentProjectId, editingTaskId, { ...body, updatedAt: now() })
+      closeTaskModal()
+    } else {
+      await API.createTask(currentProjectId, {
+        ...body, created_by: currentUser,
+      })
+      closeTaskModal()
     }
-    closeTaskModal()
+  } catch (err) {
+    alert("Error al guardar: " + err.message)
   }
 }
 
@@ -893,12 +885,15 @@ function autoSaveTask() {
       assignee: document.getElementById("modalAssignee").value,
       deadline: document.getElementById("modalDeadline").value || null,
       tags: getCurrentTags(),
-      last_modified_by: currentUser,
     }
-    await sb.from("tasks").update({ ...body, updated_at: now() }).eq("id", editingTaskId)
-    await refreshTasks()
-    renderBoard()
-    renderListView()
+    try {
+      await API.updateTask(currentProjectId, editingTaskId, { ...body, updatedAt: now() })
+      await refreshTasks()
+      renderBoard()
+      renderListView()
+    } catch (err) {
+      console.error("Auto-save error:", err)
+    }
   }, 800)
 }
 
@@ -906,11 +901,15 @@ async function saveTaskSilent(extra) {
   if (!editingTaskId) return
   const title = document.getElementById("modalTitle").value.trim()
   if (!title) return
-  const body = { title, tags: getCurrentTags(), last_modified_by: currentUser, ...extra }
-  await sb.from("tasks").update({ ...body, updated_at: now() }).eq("id", editingTaskId)
-  await refreshTasks()
-  renderBoard()
-  renderListView()
+  const body = { title, tags: getCurrentTags(), ...extra }
+  try {
+    await API.updateTask(currentProjectId, editingTaskId, { ...body, updatedAt: now() })
+    await refreshTasks()
+    renderBoard()
+    renderListView()
+  } catch (err) {
+    console.error("Silent save error:", err)
+  }
 }
 
 function closeTaskModal() {
@@ -924,11 +923,13 @@ function closeTaskModal() {
 
 // --- Comments ---
 async function loadComments(taskId) {
-  const { data } = await sb.from("comments").select("*")
-    .eq("project_id", currentProjectId).eq("task_id", taskId)
-    .order("created_at", { ascending: true })
-  comments[taskId] = data || []
-  renderComments(taskId)
+  try {
+    const data = await API.getComments(currentProjectId, taskId)
+    comments[taskId] = data || []
+    renderComments(taskId)
+  } catch (err) {
+    console.error("Error loading comments:", err)
+  }
 }
 
 function renderComments(taskId) {
@@ -939,7 +940,7 @@ function renderComments(taskId) {
     ? cmts.map((c) =>
       `<div class="comment">
         <span class="comment-user">${esc(c.user)}</span>
-        <span class="comment-time">${timeAgo(c.created_at)}</span>
+        <span class="comment-time">${timeAgo(c.createdAt)}</span>
         <div class="comment-text">${esc(c.text)}</div>
       </div>`
     ).join("")
@@ -948,11 +949,13 @@ function renderComments(taskId) {
 
 // --- Checklists ---
 async function loadChecklist(taskId) {
-  const { data } = await sb.from("checklists").select("*")
-    .eq("project_id", currentProjectId).eq("task_id", taskId)
-    .order("created_at", { ascending: true })
-  checklists[taskId] = data || []
-  renderChecklist(taskId)
+  try {
+    const data = await API.getChecklist(currentProjectId, taskId)
+    checklists[taskId] = data || []
+    renderChecklist(taskId)
+  } catch (err) {
+    console.error("Error loading checklist:", err)
+  }
 }
 
 function renderChecklist(taskId) {
@@ -970,14 +973,22 @@ function renderChecklist(taskId) {
     : ""
   container.querySelectorAll("input[type=checkbox]").forEach((cb) => {
     cb.addEventListener("change", async () => {
-      await sb.from("checklists").update({ done: cb.checked }).eq("id", cb.dataset.id)
-      loadChecklist(taskId)
+      try {
+        await API.updateChecklistItem(currentProjectId, taskId, cb.dataset.id, { done: cb.checked })
+        loadChecklist(taskId)
+      } catch (err) {
+        console.error("Error updating checklist:", err)
+      }
     })
   })
   container.querySelectorAll(".check-del").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await sb.from("checklists").delete().eq("id", btn.dataset.id)
-      loadChecklist(taskId)
+      try {
+        await API.deleteChecklistItem(currentProjectId, taskId, btn.dataset.id)
+        loadChecklist(taskId)
+      } catch (err) {
+        console.error("Error deleting checklist item:", err)
+      }
     })
   })
 }
@@ -986,14 +997,9 @@ function renderChecklist(taskId) {
 async function renderReactionsForCard(taskId) {
   const container = document.getElementById(`reactions-${taskId}`)
   if (!container) return
-  const { data: rows } = await sb.from("reactions").select("*")
-    .eq("project_id", currentProjectId).eq("task_id", taskId)
-  const grouped = {}
-  ;(rows || []).forEach(r => {
-    if (!grouped[r.emoji]) grouped[r.emoji] = []
-    grouped[r.emoji].push(r.user)
-  })
-  reactions[taskId] = grouped
+  const task = tasks.find((t) => t.id === taskId)
+  const r = task?.reactions || {}
+  reactions[taskId] = r
   renderReactions(taskId)
 }
 
@@ -1013,16 +1019,12 @@ function renderReactions(taskId) {
     btn.addEventListener("click", async () => {
       const emoji = btn.dataset.emoji
       const tId = btn.dataset.task
-      const existing = reactions[tId]?.[emoji] || []
-      if (existing.includes(currentUser)) {
-        await sb.from("reactions").delete()
-          .eq("project_id", currentProjectId).eq("task_id", tId).eq("emoji", emoji).eq("user", currentUser)
-      } else {
-        await sb.from("reactions").insert({
-          project_id: currentProjectId, task_id: tId, emoji, user: currentUser,
-        })
+      try {
+        await API.toggleReaction(currentProjectId, tId, emoji, currentUser)
+        renderReactionsForCard(tId)
+      } catch (err) {
+        console.error("Error toggling reaction:", err)
       }
-      renderReactionsForCard(tId)
     })
   })
 }
@@ -1086,80 +1088,55 @@ function openColumnsModal(project) {
     const newLabels = {}
     const newWip = {}
     const newColors = {}
-    const { data: proj } = await sb.from("projects").select("*").eq("id", currentProjectId).single()
-    const existingColors = proj?.column_colors || {}
-    list.querySelectorAll(".col-edit-item").forEach((item, i) => {
-      const key = item.querySelector(".col-key").value.trim()
-      const label = item.querySelector(".col-label").value.trim()
-      const wip = parseInt(item.querySelector(".col-wip").value) || 0
-      if (key) {
-        newCols.push(key)
-        newLabels[key] = label || key
-        newColors[key] = existingColors[key] || palette[i % palette.length]
-        if (wip > 0) newWip[key] = wip
+    try {
+      const proj = await API.getProject(currentProjectId)
+      const existingColors = proj?.columnColors || proj?.column_colors || {}
+      list.querySelectorAll(".col-edit-item").forEach((item, i) => {
+        const key = item.querySelector(".col-key").value.trim()
+        const label = item.querySelector(".col-label").value.trim()
+        const wip = parseInt(item.querySelector(".col-wip").value) || 0
+        if (key) {
+          newCols.push(key)
+          newLabels[key] = label || key
+          newColors[key] = existingColors[key] || palette[i % palette.length]
+          if (wip > 0) newWip[key] = wip
+        }
+      })
+      // Move tasks in removed columns to first column
+      const oldCols = proj?.columns || []
+      const removedCols = oldCols.filter((c) => !newCols.includes(c))
+      const firstCol = newCols[0] || "pending"
+      for (const t of tasks) {
+        if (removedCols.includes(t.status)) {
+          await API.updateTask(currentProjectId, t.id, { status: firstCol })
+        }
       }
-    })
-    const { data: projData } = await sb.from("projects").select("columns").eq("id", currentProjectId).single()
-    const oldCols = projData?.columns || []
-    const removedCols = oldCols.filter((c) => !newCols.includes(c))
-    const firstCol = newCols[0] || "pending"
-    ;(tasks || []).forEach((t) => {
-      if (removedCols.includes(t.status)) {
-        sb.from("tasks").update({ status: firstCol }).eq("id", t.id)
-      }
-    })
-    await sb.from("projects").update({
-      columns: newCols, column_labels: newLabels, column_colors: newColors, wip_limits: newWip,
-    }).eq("id", currentProjectId)
-    overlay.remove()
-    await loadProject(currentProjectId)
-    openProject(currentProjectId)
+      await API.updateProject(currentProjectId, {
+        columns: newCols, columnLabels: newLabels, columnColors: newColors, wipLimits: newWip,
+      })
+      overlay.remove()
+      await loadProject(currentProjectId)
+      openProject(currentProjectId)
+    } catch (err) {
+      alert("Error al guardar columnas: " + err.message)
+    }
   })
 }
 
 // --- Export ---
 async function exportProject() {
-  const [{ data: proj }, { data: tks }] = await Promise.all([
-    sb.from("projects").select("*").eq("id", currentProjectId).single(),
-    sb.from("tasks").select("*").eq("project_id", currentProjectId),
-  ])
-  const { data: cmts } = await sb.from("comments").select("*").eq("project_id", currentProjectId)
-  const { data: chks } = await sb.from("checklists").select("*").eq("project_id", currentProjectId)
-  const { data: rcts } = await sb.from("reactions").select("*").eq("project_id", currentProjectId)
-  const exportData = {
-    project: proj,
-    tasks: tks || [],
-    comments: cmts ? groupBy(cmts, "task_id") : {},
-    checklists: chks ? groupBy(chks, "task_id") : {},
-    reactions: rcts ? groupEmojiReactions(rcts) : {},
+  try {
+    const exportData = await API.exportProject(currentProjectId)
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `kanban-${currentProjectId}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    alert("Error al exportar: " + err.message)
   }
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `kanban-${currentProjectId}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function groupBy(arr, key) {
-  const map = {}
-  arr.forEach(item => {
-    const k = item[key]
-    if (!map[k]) map[k] = []
-    map[k].push(item)
-  })
-  return map
-}
-
-function groupEmojiReactions(rows) {
-  const map = {}
-  rows.forEach(r => {
-    if (!map[r.task_id]) map[r.task_id] = {}
-    if (!map[r.task_id][r.emoji]) map[r.task_id][r.emoji] = []
-    map[r.task_id][r.emoji].push(r.user)
-  })
-  return map
 }
 
 // --- Search ---
@@ -1243,16 +1220,19 @@ function toggleActivity() {
 async function renderActivity() {
   const container = document.getElementById("activityList")
   if (!container) return
-  const { data: activity } = await sb.from("activity").select("*")
-    .eq("project_id", currentProjectId).order("timestamp", { ascending: false }).limit(200)
-  container.innerHTML = (activity || []).map((a) => {
-    const typeMap = { create: "creó", move: "movió", edit: "editó" }
-    const detail = a.from && a.to ? ` de "${a.from}" a "${a.to}"` : ""
-    return `<div class="activity-item">
-      <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.task_title)}"${detail}
-      <span class="at-time">${timeAgo(a.timestamp)}</span>
-    </div>`
-  }).join("")
+  try {
+    const activity = await API.getActivity(currentProjectId)
+    container.innerHTML = (activity || []).map((a) => {
+      const typeMap = { create: "creó", move: "movió", edit: "editó", delete: "eliminó" }
+      const detail = a.from && a.to ? ` de "${a.from}" a "${a.to}"` : ""
+      return `<div class="activity-item">
+        <span class="at-user">${esc(a.user)}</span> ${typeMap[a.type] || "modificó"} "${esc(a.taskTitle)}"${detail}
+        <span class="at-time">${timeAgo(a.timestamp)}</span>
+      </div>`
+    }).join("")
+  } catch (err) {
+    console.error("Error loading activity:", err)
+  }
 }
 
 document.addEventListener("click", (e) => {

@@ -52,7 +52,15 @@ app.get("/api/ping", (req, res) => res.json({ ok: true }));
 function stripPassword(p) {
   if (!p) return p;
   const { password, ...rest } = p;
-  return rest;
+  // Normalize: provide both camelCase (storage) and snake_case (frontend)
+  return {
+    ...rest,
+    created_by: rest.createdBy,
+    column_labels: rest.columnLabels,
+    column_colors: rest.columnColors,
+    wip_limits: rest.wipLimits,
+    created_at: rest.createdAt,
+  };
 }
 
 app.get("/api/projects", (req, res) => {
@@ -124,16 +132,35 @@ app.delete("/api/projects/:id", (req, res) => {
 });
 
 // --- Tasks ---
+function normalizeTask(task, db, pid) {
+  if (!task) return task;
+  const taskReactions = db.reactions?.[pid]?.[task.id] || {};
+  return {
+    ...task,
+    created_by: task.createdBy,
+    last_modified_by: task.lastModifiedBy,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt,
+    reactions: taskReactions,
+  };
+}
+
 app.get("/api/projects/:pid/tasks", (req, res) => {
   const db = readDB();
-  res.json(db.tasks[req.params.pid] || []);
+  const rawTasks = db.tasks[req.params.pid] || [];
+  res.json(rawTasks.map((t) => normalizeTask(t, db, req.params.pid)));
 });
+
+function getNormalizedTasks(db, pid) {
+  return (db.tasks[pid] || []).map((t) => normalizeTask(t, db, pid));
+}
 
 app.post("/api/projects/:pid/tasks", (req, res) => {
   const db = readDB();
   if (!db.projects[req.params.pid]) return res.status(404).json({ error: "Proyecto no encontrado" });
   db.tasks[req.params.pid] = db.tasks[req.params.pid] || [];
   const tid = genId();
+  const tasksList = db.tasks[req.params.pid] || [];
   const task = {
     id: tid,
     projectId: req.params.pid,
@@ -144,8 +171,9 @@ app.post("/api/projects/:pid/tasks", (req, res) => {
     tags: req.body.tags || [],
     deadline: req.body.deadline || null,
     assignee: req.body.assignee || null,
-    createdBy: req.body.createdBy || "Anónimo",
-    lastModifiedBy: req.body.createdBy || "Anónimo",
+    order: req.body.order ?? tasksList.length,
+    createdBy: req.body.createdBy || req.body.created_by || "Anónimo",
+    lastModifiedBy: req.body.lastModifiedBy || req.body.last_modified_by || req.body.createdBy || req.body.created_by || "Anónimo",
     createdAt: now(),
     updatedAt: now(),
   };
@@ -153,8 +181,8 @@ app.post("/api/projects/:pid/tasks", (req, res) => {
   db.activity[req.params.pid] = db.activity[req.params.pid] || [];
   db.activity[req.params.pid].unshift({ type: "create", taskId: tid, taskTitle: task.title, user: task.createdBy, timestamp: now() });
   writeDB(db);
-  io.to(req.params.pid).emit("tasks:updated", db.tasks[req.params.pid]);
-  res.status(201).json(task);
+  io.to(req.params.pid).emit("tasks:updated", getNormalizedTasks(db, req.params.pid));
+  res.status(201).json(normalizeTask(task, db, req.params.pid));
 });
 
 app.put("/api/projects/:pid/tasks/:tid", (req, res) => {
@@ -172,8 +200,8 @@ app.put("/api/projects/:pid/tasks/:tid", (req, res) => {
     db.activity[req.params.pid].unshift({ type: "edit", taskId: tasks[idx].id, taskTitle: tasks[idx].title, user: tasks[idx].lastModifiedBy, timestamp: now() });
   }
   writeDB(db);
-  io.to(req.params.pid).emit("tasks:updated", db.tasks[req.params.pid]);
-  res.json(tasks[idx]);
+  io.to(req.params.pid).emit("tasks:updated", getNormalizedTasks(db, req.params.pid));
+  res.json(normalizeTask(tasks[idx], db, req.params.pid));
 });
 
 app.delete("/api/projects/:pid/tasks/:tid", (req, res) => {
@@ -183,7 +211,7 @@ app.delete("/api/projects/:pid/tasks/:tid", (req, res) => {
   delete db.checklists[req.params.pid]?.[req.params.tid];
   delete db.reactions[req.params.pid]?.[req.params.tid];
   writeDB(db);
-  io.to(req.params.pid).emit("tasks:updated", db.tasks[req.params.pid]);
+  io.to(req.params.pid).emit("tasks:updated", getNormalizedTasks(db, req.params.pid));
   res.json({ ok: true });
 });
 
@@ -281,7 +309,7 @@ io.on("connection", (socket) => {
     onlineUsers[socket.id] = { username, projectId, online: true, joinedAt: now() };
     io.to(projectId).emit("users:updated", getProjectUsers(projectId));
     const db = readDB();
-    socket.emit("tasks:updated", db.tasks[projectId] || []);
+    socket.emit("tasks:updated", getNormalizedTasks(db, projectId));
   });
 
   socket.on("leave:project", ({ projectId }) => {
@@ -307,7 +335,7 @@ io.on("connection", (socket) => {
       db.activity[projectId] = db.activity[projectId] || [];
       db.activity[projectId].unshift({ type: "move", taskId: id, taskTitle: task.title, from: oldStatus, to: newStatus, user: username, timestamp: now() });
       writeDB(db);
-      io.to(projectId).emit("tasks:updated", db.tasks[projectId]);
+      io.to(projectId).emit("tasks:updated", getNormalizedTasks(db, projectId));
     }
   });
 
@@ -325,7 +353,7 @@ io.on("connection", (socket) => {
       filtered.forEach((t, i) => (t.order = i));
       db.tasks[projectId] = [...others, ...filtered];
       writeDB(db);
-      io.to(projectId).emit("tasks:updated", db.tasks[projectId]);
+      io.to(projectId).emit("tasks:updated", getNormalizedTasks(db, projectId));
     }
   });
 
@@ -345,7 +373,7 @@ function getProjectUsers(projectId) {
 // SPA fallback
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 server.listen(PORT, "0.0.0.0", () => {
