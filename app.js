@@ -212,10 +212,10 @@ function showPrompt(title, placeholder, okText) {
     overlay.classList.remove("hidden")
     document.getElementById("promptInput").focus()
     document.getElementById("promptInput").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { overlay.remove(); resolve(document.getElementById("promptInput").value) }
+      if (e.key === "Enter") { const val = document.getElementById("promptInput").value; overlay.remove(); resolve(val) }
     })
     document.getElementById("promptCancel").addEventListener("click", () => { overlay.remove(); resolve(null) })
-    document.getElementById("promptOk").addEventListener("click", () => { overlay.remove(); resolve(document.getElementById("promptInput").value) })
+    document.getElementById("promptOk").addEventListener("click", () => { const val = document.getElementById("promptInput").value; overlay.remove(); resolve(val) })
     overlay.addEventListener("click", (e) => { if (e.target === overlay) { overlay.remove(); resolve(null) } })
   })
 }

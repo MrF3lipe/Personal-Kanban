@@ -54,20 +54,22 @@
   <!-- Projects List -->
   <template id="projectsView">
     <div class="projects-header">
-      <h2>Proyectos</h2>
-      <div class="projects-actions">
-        <button id="newProjectBtn" class="btn-primary">+ Nuevo proyecto</button>
+      <div class="projects-header-top">
+        <h2>Proyectos</h2>
+        <div class="projects-actions">
+          <button id="newProjectBtn" class="btn-primary">+ Nuevo proyecto</button>
+        </div>
+      </div>
+      <div class="join-section">
+        <form id="joinForm" class="join-form">
+          <input type="text" id="joinId" placeholder="ID del proyecto" required />
+          <input type="password" id="joinPassword" placeholder="Clave" />
+          <button type="submit" class="btn-primary">Unirse</button>
+        </form>
+        <div id="joinError" class="join-error hidden"></div>
       </div>
     </div>
     <div id="joinedProjects" class="projects-section"></div>
-    <div class="join-section">
-      <form id="joinForm" class="join-form">
-        <input type="text" id="joinId" placeholder="ID del proyecto" required />
-        <input type="password" id="joinPassword" placeholder="Clave" />
-        <button type="submit" class="btn-primary">Unirse</button>
-      </form>
-      <div id="joinError" class="join-error hidden"></div>
-    </div>
   </template>
 
   <template id="projectCard">

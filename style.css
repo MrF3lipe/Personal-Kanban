@@ -226,8 +226,12 @@ header {
 
 /* Projects View */
 .projects-header {
+  padding: 20px 36px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.projects-header-top {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 28px 36px 16px;
 }
 .projects-header h2 { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em; }
 .projects-grid {
@@ -266,18 +270,17 @@ header {
 .projects-section { margin-bottom: 24px; }
 .projects-section h3 { font-size: 0.85rem; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
 .projects-section .projects-grid { text-align: left; }
-.join-section { margin-top: 4px; padding: 8px 36px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-.join-section h3 { font-size: 0.85rem; color: var(--text2); }
-.join-form { display: flex; gap: 8px; align-items: center; flex: 1; }
+.join-section { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.join-form { display: flex; gap: 6px; align-items: center; flex: 1; }
 .join-form input {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
-  color: var(--text); padding: 8px 12px; font-size: 0.82rem; outline: none;
-  flex: 1; min-width: 120px; max-width: 220px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); padding: 6px 10px; font-size: 0.78rem; outline: none;
+  width: 140px;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 .join-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow-accent); }
-.join-form button { border-radius: 12px; flex-shrink: 0; }
-.join-error { color: var(--red); font-size: 0.75rem; flex-shrink: 0; }
+.join-form button { border-radius: 10px; padding: 6px 14px; font-size: 0.78rem; flex-shrink: 0; }
+.join-error { color: var(--red); font-size: 0.72rem; flex-shrink: 0; }
 .project-desc { color: var(--text2); font-size: 0.85rem; margin: 8px 0; word-break: break-word; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .project-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; }
 .project-id-label { font-size: 0.75rem; color: var(--text3); display: flex; align-items: center; gap: 4px; }
