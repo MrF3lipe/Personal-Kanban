@@ -337,49 +337,6 @@ function renderProjects() {
     }
   })
 
-  document.getElementById("importBtn").addEventListener("click", () => {
-    const input = document.createElement("input")
-    input.type = "file"
-    input.accept = ".json"
-    input.onchange = async () => {
-      const file = input.files[0]
-      if (!file) return
-      try {
-        const imported = JSON.parse(await file.text())
-        const items = Array.isArray(imported) ? imported : [imported]
-        for (const item of items) {
-          const p = item.project || item
-          const pid = p.id || (Date.now().toString(36) + Math.random().toString(36).substr(2, 9))
-          const cols = p.columns || ["pending","in-progress","in-review","completed"]
-          await API.createProject({
-            id: pid,
-            name: p.name || "Importado",
-            description: p.description || "",
-            password: p.password || "",
-            columns: cols,
-            column_labels: p.column_labels || p.columnLabels || {},
-            column_colors: p.column_colors || p.columnColors || {},
-            wip_limits: p.wip_limits || p.wipLimits || {},
-            created_by: currentUser,
-          })
-          const importTasks = item.tasks || []
-          for (const t of importTasks) {
-            await API.createTask(pid, {
-              title: t.title || "Tarea", description: t.description || "",
-              priority: t.priority || "p3", status: t.status || cols[0],
-              assignee: t.assignee || "", deadline: t.deadline || null,
-              tags: t.tags || [], created_by: currentUser,
-            })
-          }
-        }
-        alert(`${items.length} proyecto(s) importado(s)`)
-        loadProjects()
-      } catch (err) {
-        alert("Error al importar: " + err.message)
-      }
-    }
-    input.click()
-  })
 }
 
 // --- Project View ---

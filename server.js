@@ -376,7 +376,7 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, () => {
   const os = require("os");
   const nets = os.networkInterfaces();
   let ip = "localhost";
