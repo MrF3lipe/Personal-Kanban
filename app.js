@@ -147,6 +147,60 @@ function initLogin() {
   })
 }
 
+// --- Project Form Modal (crear/editar con todos los campos visibles) ---
+function showProjectForm(project) {
+  return new Promise((resolve) => {
+    const old = document.getElementById("projectFormOverlay")
+    if (old) old.remove()
+    const tpl = document.getElementById("projectFormModal")
+    document.body.appendChild(tpl.content.cloneNode(true))
+    const overlay = document.getElementById("projectFormOverlay")
+    const nameInput = document.getElementById("pfName")
+    const idInput = document.getElementById("pfId")
+    const passInput = document.getElementById("pfPassword")
+    const descInput = document.getElementById("pfDesc")
+    const saveBtn = document.getElementById("pfSave")
+
+    if (project) {
+      document.getElementById("projectFormTitle").textContent = "Editar proyecto"
+      nameInput.value = project.name || ""
+      idInput.value = project.id || ""
+      idInput.disabled = true; idInput.style.opacity = "0.5"
+      passInput.value = project.password || ""
+      descInput.value = project.description || ""
+      saveBtn.textContent = "Guardar cambios"
+    } else {
+      document.getElementById("projectFormTitle").textContent = "Nuevo proyecto"
+      idInput.disabled = false; idInput.style.opacity = "1"
+      saveBtn.textContent = "Crear proyecto"
+    }
+
+    overlay.classList.remove("hidden")
+    nameInput.focus()
+
+    function close(val) { overlay.remove(); resolve(val) }
+
+    document.getElementById("projectFormClose").addEventListener("click", () => close(null))
+    document.getElementById("pfCancel").addEventListener("click", () => close(null))
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(null) })
+
+    saveBtn.addEventListener("click", () => {
+      const name = nameInput.value.trim()
+      if (!name) { nameInput.focus(); return }
+      const rawId = idInput.value.trim().toLowerCase().replace(/\s+/g, "-")
+      close({
+        name,
+        customId: idInput.disabled ? null : rawId,
+        password: passInput.value,
+        description: descInput.value.trim(),
+      })
+    })
+
+    // Enter en nombre = guardar
+    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") saveBtn.click() })
+  })
+}
+
 // --- Routing ---
 function initRouting() {
   window.addEventListener("hashchange", handleRoute)
@@ -298,31 +352,28 @@ function renderProjects() {
   }
 
   document.getElementById("newProjectBtn").addEventListener("click", async () => {
-    const name = await showPrompt("Nombre del proyecto", "Ej: Mi Proyecto", "Continuar")
-    if (!name || !name.trim()) return
-    const customId = await showPrompt("ID del proyecto (vacío = automático)", "mi-proyecto", "Continuar")
-    let id
-    if (customId && customId.trim()) {
-      id = customId.trim().toLowerCase().replace(/\s+/g, "-")
-      const existing = projects.find((p) => p.id === id)
-      if (existing) {
-        alert(`El ID "${id}" ya existe. Usa otro o déjalo vacío para generar uno automático.`)
+    const data = await showProjectForm()
+    if (!data) return
+    // Verificar ID duplicado
+    if (data.customId) {
+      const exists = projects.find((p) => p.id === data.customId)
+      if (exists) {
+        alert(`El ID "${data.customId}" ya existe. Usa otro o déjalo vacío.`)
         return
       }
-    } else {
-      id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
     }
-    const password = await showPrompt("Clave del proyecto (vacío = público)", "opcional", "Crear proyecto") || ""
+    const id = data.customId || (Date.now().toString(36) + Math.random().toString(36).substr(2, 9))
     try {
       await API.createProject({
-        id, name: name.trim(), password,
+        id, name: data.name, password: data.password || "",
+        description: data.description || "",
         columns: ["pending","in-progress","in-review","completed"],
         column_labels: { pending: "Pendientes", "in-progress": "En Proceso", "in-review": "En Revisión", completed: "Completadas" },
         column_colors: { pending: "#58a6ff", "in-progress": "#d29922", "in-review": "#bc8cff", completed: "#3fb950" },
         wip_limits: {},
         created_by: currentUser,
       })
-      joined[id] = password
+      joined[id] = data.password || ""
       saveJoined(joined)
       navigate(`/project/${id}`)
     } catch (err) {
@@ -400,16 +451,16 @@ function renderKanban(project) {
   document.getElementById("viewListBtn").addEventListener("click", toggleView)
   document.getElementById("exportBtn").addEventListener("click", exportProject)
   document.getElementById("editProjectBtn").addEventListener("click", async () => {
-    const newName = await showPrompt("Nombre del proyecto", project.name, "Guardar")
-    if (!newName || !newName.trim()) return
-    const newDesc = await showPrompt("Descripción del proyecto", project.description || "Sin descripción", "Guardar") || ""
+    const data = await showProjectForm(project)
+    if (!data) return
     try {
       await API.updateProject(currentProjectId, {
-        name: newName.trim(),
-        description: newDesc.trim(),
+        name: data.name,
+        description: data.description || "",
+        password: data.password || "",
       })
       await loadProject(currentProjectId)
-      document.getElementById("topbarTitle").textContent = newName.trim()
+      document.getElementById("topbarTitle").textContent = data.name
     } catch (err) {
       alert("Error al actualizar: " + err.message)
     }

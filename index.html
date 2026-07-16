@@ -224,6 +224,32 @@
     </div>
   </template>
 
+  <!-- Project Form Modal (crear/editar) -->
+  <template id="projectFormModal">
+    <div id="projectFormOverlay" class="overlay hidden">
+      <div class="modal-card modal-sm">
+        <div class="modal-topbar">
+          <h3 id="projectFormTitle">Nuevo proyecto</h3>
+          <button id="projectFormClose" class="topbar-btn">✕</button>
+        </div>
+        <div class="modal-body" style="flex-direction:column;padding:20px 22px;overflow:visible">
+          <label style="display:block;font-size:0.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px">Nombre</label>
+          <input type="text" id="pfName" placeholder="Nombre del proyecto" class="modal-title-input" style="margin-bottom:0" />
+          <label style="display:block;font-size:0.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 4px">ID del proyecto</label>
+          <input type="text" id="pfId" placeholder="mi-proyecto (vacío = automático)" class="modal-title-input" style="margin-bottom:0" />
+          <label style="display:block;font-size:0.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 4px">Clave (opcional)</label>
+          <input type="password" id="pfPassword" placeholder="Clave para acceder al proyecto" class="modal-title-input" style="margin-bottom:0" />
+          <label style="display:block;font-size:0.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 4px">Descripción</label>
+          <textarea id="pfDesc" placeholder="Descripción del proyecto" rows="3" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);padding:12px 14px;font-size:0.85rem;outline:none;resize:vertical;line-height:1.6;transition:border-color 0.25s"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button id="pfCancel" class="btn-ghost">Cancelar</button>
+          <button id="pfSave" class="btn-primary">Crear proyecto</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="api.js"></script>
   <script src="app.js"></script>
