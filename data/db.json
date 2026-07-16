@@ -56,6 +56,58 @@
       },
       "createdAt": "2026-05-17T12:30:00.000Z",
       "createdBy": "Admin"
+    },
+    "mrno0seux55e5dse5": {
+      "name": "asd",
+      "description": "",
+      "password": "",
+      "columns": [
+        "pending",
+        "in-progress",
+        "in-review",
+        "completed"
+      ],
+      "columnLabels": {
+        "pending": "Pendientes",
+        "in-progress": "En Proceso",
+        "in-review": "En Revisión",
+        "completed": "Completadas"
+      },
+      "columnColors": {
+        "pending": "#58a6ff",
+        "in-progress": "#d29922",
+        "in-review": "#bc8cff",
+        "completed": "#3fb950"
+      },
+      "wipLimits": {},
+      "createdAt": "2026-07-16T15:30:05.555Z",
+      "createdBy": "epileF"
+    },
+    "mrno2zggmrucsqwuw": {
+      "name": "asd",
+      "description": "",
+      "password": "",
+      "columns": [
+        "pending",
+        "in-progress",
+        "in-review",
+        "completed"
+      ],
+      "columnLabels": {
+        "pending": "Pendientes",
+        "in-progress": "En Proceso",
+        "in-review": "En Revisión",
+        "completed": "Completadas"
+      },
+      "columnColors": {
+        "pending": "#58a6ff",
+        "in-progress": "#d29922",
+        "in-review": "#bc8cff",
+        "completed": "#3fb950"
+      },
+      "wipLimits": {},
+      "createdAt": "2026-07-16T15:31:46.966Z",
+      "createdBy": "Felipe"
     }
   },
   "columns": {
@@ -70,6 +122,18 @@
       "planned",
       "in-progress",
       "done"
+    ],
+    "mrno0seux55e5dse5": [
+      "pending",
+      "in-progress",
+      "in-review",
+      "completed"
+    ],
+    "mrno2zggmrucsqwuw": [
+      "pending",
+      "in-progress",
+      "in-review",
+      "completed"
     ]
   },
   "tasks": {
@@ -1227,12 +1291,19 @@
         "createdAt": "2026-05-18T17:24:14.015Z",
         "updatedAt": "2026-05-18T17:32:07.139Z"
       }
-    ]
+    ],
+    "mrno0seux55e5dse5": [],
+    "mrno2zggmrucsqwuw": []
   },
   "comments": {
-    "v2": {}
+    "v2": {},
+    "mrno0seux55e5dse5": {},
+    "mrno2zggmrucsqwuw": {}
   },
-  "checklists": {},
+  "checklists": {
+    "mrno0seux55e5dse5": {},
+    "mrno2zggmrucsqwuw": {}
+  },
   "activity": {
     "v2": [
       {
@@ -1358,7 +1429,12 @@
         "user": "Felipe",
         "timestamp": "2026-05-18T16:53:30.009Z"
       }
-    ]
+    ],
+    "mrno0seux55e5dse5": [],
+    "mrno2zggmrucsqwuw": []
   },
-  "reactions": {}
+  "reactions": {
+    "mrno0seux55e5dse5": {},
+    "mrno2zggmrucsqwuw": {}
+  }
 }

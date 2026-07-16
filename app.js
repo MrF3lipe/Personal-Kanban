@@ -241,22 +241,24 @@ function renderProjects() {
     div.querySelector(".project-name").textContent = p.name
     div.querySelector(".project-desc").textContent = p.description || "Sin descripción"
     div.querySelector(".project-id-label code").textContent = p.id
+    const creatorEl = div.querySelector(".project-created-by")
+    creatorEl.textContent = `por ${p.createdBy || p.created_by || "?"}`
 
     if (!joinedIds.has(p.id)) { joined[p.id] = ""; saveJoined(joined) }
 
+    // Copy ID fix: fallback para HTTP
     div.querySelector(".copy-id-btn").addEventListener("click", (e) => {
       e.stopPropagation()
-      navigator.clipboard.writeText(p.id).then(() => {
-        const btn = e.currentTarget
-        btn.textContent = "✓"
-        setTimeout(() => { btn.textContent = "📋" }, 1500)
-      })
+      copyToClipboard(p.id, e.currentTarget)
     })
 
-    if (p.createdBy !== currentUser) {
-      div.querySelector(".project-delete").classList.add("hidden")
-    } else {
-      div.querySelector(".project-delete").addEventListener("click", async (e) => {
+    const isOwner = p.createdBy === currentUser || p.created_by === currentUser
+    const leaveBtn = div.querySelector(".project-leave")
+    const deleteBtn = div.querySelector(".project-delete")
+
+    if (isOwner) {
+      leaveBtn.classList.add("hidden")
+      deleteBtn.addEventListener("click", async (e) => {
         e.stopPropagation()
         e.stopImmediatePropagation()
         const ok = await showConfirm("Eliminar proyecto", `¿Eliminar "${p.name}" y todas sus tareas?`, "Eliminar")
@@ -270,10 +272,18 @@ function renderProjects() {
           alert("Error al eliminar: " + err.message)
         }
       })
+    } else {
+      deleteBtn.classList.add("hidden")
+      leaveBtn.addEventListener("click", (e) => {
+        e.stopPropagation()
+        delete joined[p.id]
+        saveJoined(joined)
+        loadProjects()
+      })
     }
 
     div.addEventListener("click", (e) => {
-      if (e.target.closest(".project-delete") || e.target.closest(".copy-id-btn")) return
+      if (e.target.closest(".project-delete") || e.target.closest(".copy-id-btn") || e.target.closest(".project-leave")) return
       navigate(`/project/${p.id}`)
     })
 
@@ -389,6 +399,21 @@ function renderKanban(project) {
   document.getElementById("editColumnsBtn").addEventListener("click", () => openColumnsModal(project))
   document.getElementById("viewListBtn").addEventListener("click", toggleView)
   document.getElementById("exportBtn").addEventListener("click", exportProject)
+  document.getElementById("editProjectBtn").addEventListener("click", async () => {
+    const newName = await showPrompt("Nombre del proyecto", project.name, "Guardar")
+    if (!newName || !newName.trim()) return
+    const newDesc = await showPrompt("Descripción del proyecto", project.description || "Sin descripción", "Guardar") || ""
+    try {
+      await API.updateProject(currentProjectId, {
+        name: newName.trim(),
+        description: newDesc.trim(),
+      })
+      await loadProject(currentProjectId)
+      document.getElementById("topbarTitle").textContent = newName.trim()
+    } catch (err) {
+      alert("Error al actualizar: " + err.message)
+    }
+  })
 }
 
 function setupKanbanToolbar(project) {
@@ -1208,6 +1233,28 @@ document.getElementById("backBtn").addEventListener("click", () => {
 })
 
 // --- Utilities ---
+function copyToClipboard(text, btn) {
+  // navigator.clipboard requiere HTTPS, fallback a execCommand
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "✓"
+      setTimeout(() => { btn.textContent = "📋" }, 1500)
+    }).catch(() => fallbackCopy(text, btn))
+  } else {
+    fallbackCopy(text, btn)
+  }
+}
+function fallbackCopy(text, btn) {
+  const ta = document.createElement("textarea")
+  ta.value = text
+  ta.style.position = "fixed"; ta.style.opacity = "0"
+  document.body.appendChild(ta)
+  ta.select()
+  try { document.execCommand("copy"); btn.textContent = "✓"; setTimeout(() => { btn.textContent = "📋" }, 1500) }
+  catch (e) { btn.textContent = "✕" }
+  document.body.removeChild(ta)
+}
+
 function esc(str) {
   if (!str) return ""
   const div = document.createElement("div")

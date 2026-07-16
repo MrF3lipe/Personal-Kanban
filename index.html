@@ -76,10 +76,14 @@
     <div class="project-card" data-id="">
       <div class="project-card-header">
         <h3 class="project-name"></h3>
-        <button class="project-delete" title="Eliminar proyecto">✕</button>
+        <div class="project-card-actions">
+          <button class="project-leave" title="Salir del proyecto">Salir</button>
+          <button class="project-delete" title="Eliminar proyecto">✕</button>
+        </div>
       </div>
       <p class="project-desc"></p>
       <div class="project-meta">
+        <span class="project-created-by"></span>
         <span class="project-id-label">ID: <code></code><button class="copy-id-btn" title="Copiar ID">📋</button></span>
       </div>
     </div>
@@ -89,6 +93,7 @@
   <template id="kanbanView">
     <div class="kanban-toolbar">
       <div class="toolbar-left">
+        <button id="editProjectBtn" class="btn-ghost" title="Editar proyecto">⚙️</button>
         <button id="addTaskBtn" class="btn-primary">+ Tarea</button>
         <button id="editColumnsBtn" class="btn-ghost">Columnas</button>
         <button id="viewListBtn" class="btn-ghost" title="Vista lista">☰</button>
