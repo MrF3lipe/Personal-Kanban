@@ -82,6 +82,32 @@
       "wipLimits": {},
       "createdAt": "2026-07-16T15:30:05.555Z",
       "createdBy": "epileF"
+    },
+    "mrnql2ne4crxqukhq": {
+      "name": "asd",
+      "description": "asdasdasdasd",
+      "password": "",
+      "columns": [
+        "pending",
+        "in-progress",
+        "in-review",
+        "completed"
+      ],
+      "columnLabels": {
+        "pending": "Pendientes",
+        "in-progress": "En Proceso",
+        "in-review": "En Revisión",
+        "completed": "Completadas"
+      },
+      "columnColors": {
+        "pending": "#58a6ff",
+        "in-progress": "#d29922",
+        "in-review": "#bc8cff",
+        "completed": "#3fb950"
+      },
+      "wipLimits": {},
+      "createdAt": "2026-07-16T16:41:48.465Z",
+      "createdBy": "Felipe"
     }
   },
   "columns": {
@@ -98,6 +124,12 @@
       "done"
     ],
     "mrno0seux55e5dse5": [
+      "pending",
+      "in-progress",
+      "in-review",
+      "completed"
+    ],
+    "mrnql2ne4crxqukhq": [
       "pending",
       "in-progress",
       "in-review",
@@ -375,6 +407,22 @@
         "lastModifiedBy": "Felipe",
         "createdAt": "2026-05-18T16:53:46.443Z",
         "updatedAt": "2026-05-18T16:53:46.443Z"
+      },
+      {
+        "id": "79a3d1a8",
+        "projectId": "demo",
+        "title": "Tarea de prueba CLI",
+        "description": "",
+        "status": "completed",
+        "priority": "p0",
+        "tags": [],
+        "deadline": null,
+        "assignee": null,
+        "order": 15,
+        "createdBy": "Felipe",
+        "lastModifiedBy": "Felipe",
+        "createdAt": "2026-07-16T16:37:42.153Z",
+        "updatedAt": "2026-07-16T16:37:43.298Z"
       }
     ],
     "v2": [
@@ -1293,14 +1341,17 @@
         "createdAt": "2026-07-16T16:01:03.518Z",
         "updatedAt": "2026-07-16T16:01:16.604Z"
       }
-    ]
+    ],
+    "mrnql2ne4crxqukhq": []
   },
   "comments": {
     "v2": {},
-    "mrno0seux55e5dse5": {}
+    "mrno0seux55e5dse5": {},
+    "mrnql2ne4crxqukhq": {}
   },
   "checklists": {
-    "mrno0seux55e5dse5": {}
+    "mrno0seux55e5dse5": {},
+    "mrnql2ne4crxqukhq": {}
   },
   "activity": {
     "v2": [
@@ -1364,6 +1415,22 @@
       }
     ],
     "demo": [
+      {
+        "type": "move",
+        "taskId": "79a3d1a8",
+        "taskTitle": "Tarea de prueba CLI",
+        "from": "pending",
+        "to": "completed",
+        "user": "Felipe",
+        "timestamp": "2026-07-16T16:37:43.298Z"
+      },
+      {
+        "type": "create",
+        "taskId": "79a3d1a8",
+        "taskTitle": "Tarea de prueba CLI",
+        "user": "Felipe",
+        "timestamp": "2026-07-16T16:37:42.153Z"
+      },
       {
         "type": "edit",
         "taskId": "6a18427d",
@@ -1529,9 +1596,11 @@
         "user": "epileF",
         "timestamp": "2026-07-16T16:00:54.016Z"
       }
-    ]
+    ],
+    "mrnql2ne4crxqukhq": []
   },
   "reactions": {
-    "mrno0seux55e5dse5": {}
+    "mrno0seux55e5dse5": {},
+    "mrnql2ne4crxqukhq": {}
   }
 }
